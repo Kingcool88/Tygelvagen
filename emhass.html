@@ -213,6 +213,7 @@
       <span class="last-update" id="last-update">–</span>
       <button class="refresh-btn" onclick="loadData()">↺ Uppdatera</button>
       <button class="settings-btn" onclick="openSettings()" title="Inställningar">⚙</button>
+      <button class="settings-btn" onclick="runDebug()" title="Debug">🔍</button>
     </div>
   </div>
 
@@ -580,6 +581,37 @@ function renderTable(rows, avgBuy) {
       </td>
     </tr>`;
   }).join('');
+}
+
+// ── Debug function ──────────────────────────────────────────
+async function runDebug() {
+  const lines = [
+    '=== DEBUG ===',
+    'HA_URL:     ' + (HA_URL || '(tomt)'),
+    'WORKER_URL: ' + (WORKER_URL || '(tomt - anropar HA direkt)'),
+    'NORDPOOL:   ' + (NORDPOOL || '(tomt)'),
+    'TOKEN:      ' + (HA_TOKEN ? HA_TOKEN.substring(0,20) + '...' : '(tomt)'),
+    '',
+    'Testar anrop...',
+  ];
+  alert(lines.join('\n'));
+
+  try {
+    const path = '/api/';
+    let url, headers;
+    if (WORKER_URL) {
+      url = WORKER_URL.replace(/\/$/, '') + path;
+      headers = { 'X-HA-URL': HA_URL, 'X-HA-Token': HA_TOKEN, 'Content-Type': 'application/json' };
+    } else {
+      url = HA_URL.replace(/\/$/, '') + path;
+      headers = { 'Authorization': 'Bearer ' + HA_TOKEN, 'Content-Type': 'application/json' };
+    }
+    const r = await fetch(url, { headers });
+    const text = await r.text();
+    alert('HTTP ' + r.status + '\n\nSvar (första 300 tecken):\n' + text.substring(0, 300));
+  } catch(e) {
+    alert('FEL: ' + e.message);
+  }
 }
 
 // ── Auto-refresh every 15 min ────────────────────────────────
