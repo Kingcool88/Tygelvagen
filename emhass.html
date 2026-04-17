@@ -387,63 +387,76 @@ async function loadData() {
       NORDPOOL ? fetchSensor(NORDPOOL).catch(() => null) : Promise.resolve(null),
     ]);
 
-    // Build unified timeline from batt forecasts
-    const battFc  = battS.attributes.forecasts  || [];
-    const pvFc    = pvS.attributes.forecasts     || [];
-    const loadFc  = loadS.attributes.forecasts   || [];
-    const gridFc  = gridS.attributes.forecasts   || [];
-    const buyFc   = buyS.attributes.forecasts    || [];
-    const sellFc  = sellS.attributes.forecasts   || [];
-    const socFc   = socS.attributes.forecasts    || [];
-
-    // Index all by date string
-    const idx = arr => {
-      const m = {};
-      arr.forEach(p => { const k = Object.keys(p).find(k => k !== 'date'); m[p.date] = parseFloat(p[k]) || 0; });
-      return m;
+    // Helper: extract forecast series from a sensor
+    // Each sensor has attributes.forecasts = [{date, <sensorname>: value}, ...]
+    const extractFc = (sensor) => {
+      const fc = sensor.attributes.forecasts || [];
+      if (!fc.length) return [];
+      // Find value key (not 'date')
+      const valKey = Object.keys(fc[0]).find(k => k !== 'date');
+      return fc.map(p => ({
+        t:   new Date(p.date).getTime(),
+        val: parseFloat(p[valKey]) || 0,
+        date: p.date,
+      }));
     };
-    const pvMap   = idx(pvFc);
-    const loadMap = idx(loadFc);
-    const gridMap = idx(gridFc);
-    const buyMap  = idx(buyFc);
-    const sellMap = idx(sellFc);
-    const socMap  = idx(socFc);
+
+    const battFc  = extractFc(battS);
+    const pvFc    = extractFc(pvS);
+    const loadFc  = extractFc(loadS);
+    const gridFc  = extractFc(gridS);
+    const buyFc   = extractFc(buyS);
+    const sellFc  = extractFc(sellS);
+    const socFc   = extractFc(socS);
+
+    // Index by timestamp ms for fast lookup
+    const toMap = arr => { const m={}; arr.forEach(p => m[p.t] = p.val); return m; };
+    const pvMap   = toMap(pvFc);
+    const loadMap = toMap(loadFc);
+    const gridMap = toMap(gridFc);
+    const buyMap  = toMap(buyFc);
+    const sellMap = toMap(sellFc);
+    const socMap  = toMap(socFc);
 
     // Nordpool raw_today
     const nordRaw = nordS?.attributes?.raw_today || [];
-    const nordMap = {};
-    nordRaw.forEach(h => { nordMap[new Date(h.start).toISOString()] = h.value; });
 
-    // Buy prices in öre for stats
-    const buyOre = battFc.map(p => (buyMap[p.date] || 0) * 100);
+    // Buy prices in öre for stats — use buyFc directly
+    const buyOre = buyFc.map(p => p.val * 100).filter(v => v > 0);
     const avgBuy = buyOre.length ? buyOre.reduce((a,b)=>a+b,0)/buyOre.length : 0;
 
     document.getElementById('price-low').textContent  = buyOre.length ? Math.round(Math.min(...buyOre)) : '–';
-    document.getElementById('price-avg').textContent  = Math.round(avgBuy);
+    document.getElementById('price-avg').textContent  = buyOre.length ? Math.round(avgBuy) : '–';
     document.getElementById('price-high').textContent = buyOre.length ? Math.round(Math.max(...buyOre)) : '–';
 
-    // Build series data
+    // Build series — use battFc as master timeline
     const solarCharge=[], gridCharge=[], discharge=[], export_=[];
     const pvLine=[], loadLine=[], socLine=[], gridLine=[];
     const nordBars=[], buyLine=[], sellLine=[];
     const tableRows=[];
 
-    battFc.forEach(p => {
-      const t    = new Date(p.date).getTime();
-      const batt = parseFloat(p.mpc_batt_power) || 0;
-      const pv   = pvMap[p.date]   || 0;
-      const load = loadMap[p.date] || 0;
-      const grid = gridMap[p.date] || 0;
-      const buy  = buyMap[p.date]  || 0;
-      const sell = sellMap[p.date] || 0;
-      const soc  = socMap[p.date]  || 0;
+    // Build battMap before using it
+    const battMap = toMap(battFc);
+
+    // Use the longest forecast as master (usually battFc or loadFc)
+    const masterFc = [battFc, loadFc, pvFc].sort((a,b) => b.length - a.length)[0];
+
+    masterFc.forEach(p => {
+      const t    = p.t;
+      const batt = battMap[t] ?? 0;
+      const pv   = pvMap[t]   ?? 0;
+      const load = loadMap[t] ?? 0;
+      const grid = gridMap[t] ?? 0;
+      const buy  = buyMap[t]  ?? 0;
+      const sell = sellMap[t] ?? 0;
+      const soc  = socMap[t]  ?? 0;
       const dec  = classifyDecision(batt, pv, grid, buy, sell, avgBuy/100);
 
       pvLine.push([t, pv]);
       loadLine.push([t, load]);
       socLine.push([t, soc]);
       gridLine.push([t, grid]);
-      buyLine.push([t, buy * 100]);   // kr → öre
+      buyLine.push([t, buy * 100]);
       sellLine.push([t, sell * 100]);
 
       solarCharge.push([t, dec.key === 'solar_charge' ? Math.abs(batt) : 0]);
