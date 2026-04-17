@@ -612,7 +612,7 @@ async function runDebug() {
   alert(lines.join('\n'));
 
   try {
-    const path = '/api/states/sensor.mpc_pv_power';
+    const path = '/api/states/sensor.mpc_load_power';
     let url, headers;
     if (WORKER_URL) {
       url = WORKER_URL.replace(/\/$/, '') + path;
@@ -626,18 +626,26 @@ async function runDebug() {
     const attrs = data.attributes || {};
     const attrKeys = Object.keys(attrs).slice(0, 15);
     const fc = attrs.forecasts || [];
-    const fcFirst = fc.length ? JSON.stringify(fc[0]) : '(tom)';
-    const fcLast  = fc.length ? JSON.stringify(fc[fc.length-1]) : '(tom)';
-    const nonZero = fc.filter(p => {
-      const val = parseFloat(Object.values(p).find((v,i) => Object.keys(p)[i] !== 'date') || 0);
-      return val !== 0;
-    }).length;
+    const nonZero = fc.filter(p => parseFloat(p.mpc_load_power) !== 0).length;
+
+    // Hämta även mpc_general_price
+    const path2 = '/api/states/sensor.mpc_general_price';
+    const url2 = WORKER_URL
+      ? WORKER_URL.replace(/\/$/, '') + path2
+      : HA_URL.replace(/\/$/, '') + path2;
+    const r2 = await fetch(url2, { headers });
+    const data2 = await r2.json();
+    const fc2 = data2.attributes?.forecasts || [];
+    const priceFirst = fc2.length ? JSON.stringify(fc2[0]) : '(tom)';
+    const nonZeroPrice = fc2.filter(p => parseFloat(p.mpc_general_price) !== 0).length;
+
     alert(
-      'HTTP ' + r.status + ' | State: ' + data.state + '\n' +
-      'Antal forecast-punkter: ' + fc.length + '\n' +
-      'Varav icke-noll: ' + nonZero + '\n\n' +
-      'Första: ' + fcFirst + '\n\n' +
-      'Sista:  ' + fcLast
+      'mpc_load_power:\n' +
+      'State: ' + data.state + ' | Punkter: ' + fc.length + ' | Icke-noll: ' + nonZero + '\n' +
+      'Exempel: ' + JSON.stringify(fc[0]) + '\n\n' +
+      'mpc_general_price:\n' +
+      'State: ' + data2.state + ' | Punkter: ' + fc2.length + ' | Icke-noll: ' + nonZeroPrice + '\n' +
+      'Exempel: ' + priceFirst
     );
   } catch(e) {
     alert('FEL: ' + e.message);
