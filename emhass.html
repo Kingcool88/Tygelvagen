@@ -236,9 +236,9 @@
     <div class="card-header">
       <span class="card-title">IDAG</span>
       <div class="span-btns">
-        <button class="span-btn active" data-h="12" onclick="setSpan(this,12)">12h</button>
+        <button class="span-btn" data-h="12" onclick="setSpan(this,12)">12h</button>
         <button class="span-btn" data-h="24" onclick="setSpan(this,24)">24h</button>
-        <button class="span-btn" data-h="48" onclick="setSpan(this,48)">48h</button>
+        <button class="span-btn active" data-h="48" onclick="setSpan(this,48)">48h</button>
       </div>
     </div>
     <div class="card-sub">Schemat visar EMHASS-planen per kvart. Uppdateras var 15:e minut.</div>
@@ -359,7 +359,7 @@ function classifyDecision(battW, pvW, gridW, buyPrice, sellPrice, avgPrice) {
 
 // ── Chart instance ───────────────────────────────────────────
 let chart = null;
-let currentSpanH = 12;
+let currentSpanH = 48;
 let chartData = null;
 
 function setSpan(btn, h) {
@@ -480,7 +480,9 @@ async function loadData() {
 // ── Render chart ─────────────────────────────────────────────
 function renderChart(d, spanH) {
   const now  = Date.now();
-  const xMin = now - 2 * 3600000;
+  // Visa alltid från midnatt idag, oavsett klockslag
+  const midnight = new Date(); midnight.setHours(0,0,0,0);
+  const xMin = midnight.getTime();
   const xMax = xMin + spanH * 3600000;
 
   const opts = {
