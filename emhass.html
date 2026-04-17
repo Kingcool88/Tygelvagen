@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ EMHASS Energiplan</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.46.0/apexcharts.min.js"></script>
+<style>
+  /* ── Typografi & reset ── */
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0f1117;
+    --surface:   #181c26;
+    --surface2:  #1e2330;
+    --border:    #2a2f3d;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --green:     #22c55e;
+    --green-dim: #15803d;
+    --blue:      #60a5fa;
+    --blue-dim:  #1d4ed8;
+    --orange:    #fb923c;
+    --yellow:    #fbbf24;
+    --red:       #f87171;
+    --cyan:      #34d399;
+    --purple:    #a78bfa;
+    --gray:      #94a3b8;
+    --now-red:   #ef4444;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+  }
+
+  /* ── Config overlay ── */
+  #config-overlay {
+    position: fixed; inset: 0; background: #000000cc;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; backdrop-filter: blur(4px);
+  }
+  #config-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 32px; width: min(480px, 92vw);
+    box-shadow: 0 24px 64px #00000088;
+  }
+  #config-box h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 8px; }
+  #config-box p  { color: var(--muted); font-size: 0.875rem; margin-bottom: 24px; line-height: 1.6; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; letter-spacing: .05em; text-transform: uppercase; }
+  .field input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 0.875rem;
+    outline: none; transition: border-color .2s;
+  }
+  .field input:focus { border-color: var(--blue); }
+  #config-save {
+    width: 100%; padding: 12px; background: var(--blue);
+    border: none; border-radius: 8px; color: #fff;
+    font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 600;
+    cursor: pointer; transition: opacity .2s;
+  }
+  #config-save:hover { opacity: .85; }
+
+  /* ── Layout ── */
+  #app { display: none; max-width: 960px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  /* ── Header ── */
+  .page-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px; gap: 12px; flex-wrap: wrap;
+  }
+  .page-title { display: flex; align-items: center; gap: 10px; }
+  .page-title h1 { font-size: 1.4rem; font-weight: 600; }
+  .page-title .bolt { font-size: 1.5rem; }
+  .status-row { display: flex; align-items: center; gap: 10px; }
+  .last-update { font-size: 0.78rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .refresh-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 14px; color: var(--text);
+    font-size: 0.8rem; cursor: pointer; transition: background .2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .refresh-btn:hover { background: var(--border); }
+  .settings-btn {
+    background: none; border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px; color: var(--muted);
+    cursor: pointer; font-size: 1rem; transition: color .2s;
+  }
+  .settings-btn:hover { color: var(--text); }
+
+  /* ── Stat cards ── */
+  .stat-row {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px;
+  }
+  .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
+  .stat-value { font-size: 1.6rem; font-weight: 600; font-family: 'DM Mono', monospace; }
+  .stat-unit  { font-size: 0.85rem; color: var(--muted); margin-left: 2px; }
+  .stat-low  .stat-value { color: var(--green); }
+  .stat-avg  .stat-value { color: var(--text); }
+  .stat-high .stat-value { color: var(--orange); }
+
+  /* ── Chart card ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 16px 12px; margin-bottom: 20px;
+  }
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .card-title { font-size: 1rem; font-weight: 600; }
+  .card-sub   { font-size: 0.78rem; color: var(--muted); margin-bottom: 16px; }
+
+  /* Span buttons */
+  .span-btns { display: flex; gap: 6px; }
+  .span-btn {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 12px; color: var(--muted);
+    font-size: 0.78rem; cursor: pointer; transition: all .15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .span-btn.active, .span-btn:hover {
+    background: var(--surface2); color: var(--text); border-color: var(--blue);
+  }
+
+  #chart { min-height: 320px; }
+
+  /* ── Decision table ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  thead tr { border-bottom: 1px solid var(--border); }
+  thead th {
+    text-align: left; padding: 10px 12px;
+    font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--muted); font-weight: 500;
+  }
+  tbody tr { border-bottom: 1px solid #ffffff08; transition: background .15s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 10px 12px; font-family: 'DM Mono', monospace; }
+  td.decision { font-family: 'DM Sans', sans-serif; font-weight: 500; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 20px; font-size: 0.8rem;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Loading / error ── */
+  .loading { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .spinner {
+    width: 32px; height: 32px; border: 3px solid var(--border);
+    border-top-color: var(--blue); border-radius: 50%;
+    animation: spin .8s linear infinite; margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-msg { color: var(--red); background: #f8717122; border: 1px solid #f8717144;
+    border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 0.875rem; }
+</style>
+</head>
+<body>
+
+<!-- Config overlay -->
+<div id="config-overlay">
+  <div id="config-box">
+    <h2>⚡ EMHASS Dashboard</h2>
+    <p>Ange din Nabu Casa-adress och en Long-Lived Access Token.<br>
+       Inställningarna sparas i webbläsaren lokalt.</p>
+  <p style="font-size:0.78rem;color:#60a5fa;margin-top:-12px">
+    💡 HA URL: <code style="font-family:'DM Mono',monospace">https://DITT-ID.ui.nabu.casa</code><br>
+    Token skapas i HA under Profil → Säkerhet → Tokens längst ned.
+  </p>
+    <div class="field">
+      <label>HA URL</label>
+      <input id="cfg-url" type="text" placeholder="http://homeassistant.local:8123" spellcheck="false">
+    </div>
+    <div class="field">
+      <label>Long-Lived Access Token</label>
+      <input id="cfg-token" type="password" placeholder="eyJ0eXAiOiJKV1Qi...">
+    </div>
+    <div class="field">
+      <label>Cloudflare Worker URL</label>
+      <input id="cfg-worker" type="text" placeholder="https://ha-proxy.DITTNAMN.workers.dev" spellcheck="false">
+      <div style="font-size:0.72rem;color:#64748b;margin-top:4px">Lämna tomt om du bara använder lokalt nätverk</div>
+    </div>
+    <div class="field">
+      <label>Nordpool sensor (valfritt)</label>
+      <input id="cfg-nordpool" type="text" placeholder="sensor.nordpool_kwh_se4_sek_3_10_025" spellcheck="false">
+    </div>
+    <button id="config-save">Spara och anslut</button>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="page-header">
+    <div class="page-title">
+      <span class="bolt">⚡</span>
+      <h1>Elpris &amp; Schema</h1>
+    </div>
+    <div class="status-row">
+      <span class="last-update" id="last-update">–</span>
+      <button class="refresh-btn" onclick="loadData()">↺ Uppdatera</button>
+      <button class="settings-btn" onclick="openSettings()" title="Inställningar">⚙</button>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card stat-low">
+      <div class="stat-label">Lägsta</div>
+      <div><span class="stat-value" id="price-low">–</span><span class="stat-unit">öre/kWh</span></div>
+    </div>
+    <div class="stat-card stat-avg">
+      <div class="stat-label">Medel</div>
+      <div><span class="stat-value" id="price-avg">–</span><span class="stat-unit">öre/kWh</span></div>
+    </div>
+    <div class="stat-card stat-high">
+      <div class="stat-label">Högsta</div>
+      <div><span class="stat-value" id="price-high">–</span><span class="stat-unit">öre/kWh</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">IDAG</span>
+      <div class="span-btns">
+        <button class="span-btn active" data-h="12" onclick="setSpan(this,12)">12h</button>
+        <button class="span-btn" data-h="24" onclick="setSpan(this,24)">24h</button>
+        <button class="span-btn" data-h="48" onclick="setSpan(this,48)">48h</button>
+      </div>
+    </div>
+    <div class="card-sub">Schemat visar EMHASS-planen per kvart. Uppdateras var 15:e minut.</div>
+    <div id="chart-loading" class="loading"><div class="spinner"></div>Hämtar data…</div>
+    <div id="chart-error" class="error-msg" style="display:none"></div>
+    <div id="chart" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🕐 Beslutstabell</span>
+    </div>
+    <div class="card-sub">Visar köp/säljpris och batteribeslut framåt i tid.</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tid</th>
+            <th>Köp (öre/kWh)</th>
+            <th>Sälj (öre/kWh)</th>
+            <th>Sol (W)</th>
+            <th>Batteri</th>
+            <th>Beslut</th>
+          </tr>
+        </thead>
+        <tbody id="decision-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────
+let HA_URL    = localStorage.getItem('ha_url')     || '';
+let WORKER_URL = localStorage.getItem('ha_worker')  || '';
+let HA_TOKEN = localStorage.getItem('ha_token')  || '';
+let NORDPOOL = localStorage.getItem('ha_nordpool')|| 'sensor.nordpool_kwh_se4_sek_3_10_025';
+
+document.getElementById('cfg-url').value      = HA_URL;
+document.getElementById('cfg-token').value    = HA_TOKEN;
+document.getElementById('cfg-nordpool').value = NORDPOOL;
+
+document.getElementById('config-save').addEventListener('click', () => {
+  HA_URL     = document.getElementById('cfg-url').value.trim().replace(/\/$/, '');
+  HA_TOKEN   = document.getElementById('cfg-token').value.trim();
+  NORDPOOL   = document.getElementById('cfg-nordpool').value.trim();
+  WORKER_URL = document.getElementById('cfg-worker').value.trim().replace(/\/$/, '');
+  localStorage.setItem('ha_url',      HA_URL);
+  localStorage.setItem('ha_token',    HA_TOKEN);
+  localStorage.setItem('ha_nordpool', NORDPOOL);
+  localStorage.setItem('ha_worker',   WORKER_URL);
+  document.getElementById('config-overlay').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadData();
+});
+
+function openSettings() {
+  document.getElementById('cfg-url').value      = HA_URL;
+  document.getElementById('cfg-token').value    = HA_TOKEN;
+  document.getElementById('cfg-nordpool').value = NORDPOOL;
+  document.getElementById('cfg-worker').value   = WORKER_URL;
+  document.getElementById('config-overlay').style.display = 'flex';
+}
+
+if (HA_URL && HA_TOKEN) {
+  document.getElementById('config-overlay').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+}
+
+// ── HA API via Cloudflare Worker proxy ──────────────────────
+// Worker-URL sparas i localStorage. Sätts i konfigurationsrutan.
+// Om du kör lokalt och inte behöver proxy: lämna Worker URL tomt
+// så anropas HA direkt (fungerar på lokalt nätverk utan CORS-problem).
+async function fetchSensor(entityId) {
+  const path = `/api/states/${entityId}`;
+  let url, headers;
+
+  if (WORKER_URL) {
+    // Via Cloudflare Worker (fungerar överallt)
+    url = WORKER_URL.replace(/\/$/, '') + path;
+    headers = {
+      'X-HA-URL':   HA_URL,
+      'X-HA-Token': HA_TOKEN,
+      'Content-Type': 'application/json',
+    };
+  } else {
+    // Direkt till HA (fungerar bara lokalt)
+    url = HA_URL.replace(/\/$/, '') + path;
+    headers = {
+      'Authorization': `Bearer ${HA_TOKEN}`,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  const r = await fetch(url, { headers });
+  if (!r.ok) throw new Error(`${entityId}: HTTP ${r.status}`);
+  return r.json();
+}
+
+// ── Decision logic ───────────────────────────────────────────
+function classifyDecision(battW, pvW, gridW, buyPrice, sellPrice, avgPrice) {
+  const charging   = battW < -50;
+  const discharging= battW >  50;
+  const exporting  = gridW < -50;
+
+  if (charging) {
+    if (pvW >= Math.abs(battW) * 0.8) return { key: 'solar_charge',  label: 'Ladda (sol)',  color: '#22c55e' };
+    if (buyPrice < avgPrice * 0.85)   return { key: 'grid_charge',   label: 'Ladda (nät)',  color: '#60a5fa' };
+    return                                   { key: 'grid_charge',   label: 'Ladda (nät)',  color: '#60a5fa' };
+  }
+  if (discharging && exporting)       return { key: 'sell_solar',    label: 'Sälj sol',     color: '#4ade80' };
+  if (discharging)                    return { key: 'cover_house',   label: 'Täck huset',   color: '#fb923c' };
+  if (exporting)                      return { key: 'export',        label: 'Exportera',    color: '#2dd4bf' };
+  if (pvW > 200 && Math.abs(gridW) < 100) return { key: 'cover_house', label: 'Täck huset', color: '#fb923c' };
+  if (buyPrice > avgPrice * 1.15)     return { key: 'wait',         label: 'Vänta',        color: '#94a3b8' };
+  return                                     { key: 'observe',      label: 'Observera',    color: '#64748b' };
+}
+
+// ── Chart instance ───────────────────────────────────────────
+let chart = null;
+let currentSpanH = 12;
+let chartData = null;
+
+function setSpan(btn, h) {
+  document.querySelectorAll('.span-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentSpanH = h;
+  if (chartData) renderChart(chartData, h);
+}
+
+// ── Main load ────────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('chart-loading').style.display = 'block';
+  document.getElementById('chart-error').style.display   = 'none';
+  document.getElementById('chart').style.display         = 'none';
+
+  try {
+    const [pvS, loadS, battS, socS, gridS, buyS, sellS, nordS] = await Promise.all([
+      fetchSensor('sensor.mpc_pv_power'),
+      fetchSensor('sensor.mpc_load_power'),
+      fetchSensor('sensor.mpc_batt_power'),
+      fetchSensor('sensor.mpc_batt_soc'),
+      fetchSensor('sensor.mpc_grid_power'),
+      fetchSensor('sensor.mpc_general_price'),
+      fetchSensor('sensor.mpc_feed_in_price'),
+      NORDPOOL ? fetchSensor(NORDPOOL).catch(() => null) : Promise.resolve(null),
+    ]);
+
+    // Build unified timeline from batt forecasts
+    const battFc  = battS.attributes.forecasts  || [];
+    const pvFc    = pvS.attributes.forecasts     || [];
+    const loadFc  = loadS.attributes.forecasts   || [];
+    const gridFc  = gridS.attributes.forecasts   || [];
+    const buyFc   = buyS.attributes.forecasts    || [];
+    const sellFc  = sellS.attributes.forecasts   || [];
+    const socFc   = socS.attributes.forecasts    || [];
+
+    // Index all by date string
+    const idx = arr => {
+      const m = {};
+      arr.forEach(p => { const k = Object.keys(p).find(k => k !== 'date'); m[p.date] = parseFloat(p[k]) || 0; });
+      return m;
+    };
+    const pvMap   = idx(pvFc);
+    const loadMap = idx(loadFc);
+    const gridMap = idx(gridFc);
+    const buyMap  = idx(buyFc);
+    const sellMap = idx(sellFc);
+    const socMap  = idx(socFc);
+
+    // Nordpool raw_today
+    const nordRaw = nordS?.attributes?.raw_today || [];
+    const nordMap = {};
+    nordRaw.forEach(h => { nordMap[new Date(h.start).toISOString()] = h.value; });
+
+    // Buy prices in öre for stats
+    const buyOre = battFc.map(p => (buyMap[p.date] || 0) * 100);
+    const avgBuy = buyOre.length ? buyOre.reduce((a,b)=>a+b,0)/buyOre.length : 0;
+
+    document.getElementById('price-low').textContent  = buyOre.length ? Math.round(Math.min(...buyOre)) : '–';
+    document.getElementById('price-avg').textContent  = Math.round(avgBuy);
+    document.getElementById('price-high').textContent = buyOre.length ? Math.round(Math.max(...buyOre)) : '–';
+
+    // Build series data
+    const solarCharge=[], gridCharge=[], discharge=[], export_=[];
+    const pvLine=[], loadLine=[], socLine=[], gridLine=[];
+    const nordBars=[], buyLine=[], sellLine=[];
+    const tableRows=[];
+
+    battFc.forEach(p => {
+      const t    = new Date(p.date).getTime();
+      const batt = parseFloat(p.mpc_batt_power) || 0;
+      const pv   = pvMap[p.date]   || 0;
+      const load = loadMap[p.date] || 0;
+      const grid = gridMap[p.date] || 0;
+      const buy  = buyMap[p.date]  || 0;
+      const sell = sellMap[p.date] || 0;
+      const soc  = socMap[p.date]  || 0;
+      const dec  = classifyDecision(batt, pv, grid, buy, sell, avgBuy/100);
+
+      pvLine.push([t, pv]);
+      loadLine.push([t, load]);
+      socLine.push([t, soc]);
+      gridLine.push([t, grid]);
+      buyLine.push([t, buy * 100]);   // kr → öre
+      sellLine.push([t, sell * 100]);
+
+      solarCharge.push([t, dec.key === 'solar_charge' ? Math.abs(batt) : 0]);
+      gridCharge.push( [t, dec.key === 'grid_charge'  ? Math.abs(batt) : 0]);
+      discharge.push(  [t, batt > 50 ? batt : 0]);
+      export_.push(    [t, dec.key === 'export'       ? Math.abs(grid) : 0]);
+
+      tableRows.push({ t, buy: buy*100, sell: sell*100, pv, batt, soc, dec });
+    });
+
+    // Nordpool bars
+    nordRaw.forEach(h => { nordBars.push([new Date(h.start).getTime(), h.value * 100]); });
+
+    chartData = { solarCharge, gridCharge, discharge, export_, pvLine, loadLine, socLine, gridLine, nordBars, buyLine, sellLine };
+
+    renderChart(chartData, currentSpanH);
+    renderTable(tableRows, avgBuy/100);
+
+    document.getElementById('last-update').textContent =
+      'Uppdaterad ' + new Date().toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'});
+
+    document.getElementById('chart-loading').style.display = 'none';
+    document.getElementById('chart').style.display = 'block';
+
+  } catch(e) {
+    document.getElementById('chart-loading').style.display = 'none';
+    const el = document.getElementById('chart-error');
+    el.style.display = 'block';
+    el.textContent = '⚠ Fel: ' + e.message + '. Kontrollera HA-URL och token.';
+    console.error(e);
+  }
+}
+
+// ── Render chart ─────────────────────────────────────────────
+function renderChart(d, spanH) {
+  const now  = Date.now();
+  const xMin = now - 2 * 3600000;
+  const xMax = xMin + spanH * 3600000;
+
+  const opts = {
+    chart: {
+      type: 'line', height: 340, background: 'transparent',
+      toolbar: { show: true, tools: { download:false, selection:false, zoom:true, zoomin:true, zoomout:true, pan:true, reset:true }},
+      fontFamily: "'DM Sans', sans-serif",
+      animations: { enabled: false },
+    },
+    theme: { mode: 'dark' },
+    dataLabels: { enabled: false },
+    stroke: { curve: 'stepline', width: [0,0,0,0, 2,2,2,2, 2,2] },
+    fill: { type: ['solid','solid','solid','solid','gradient','gradient','solid','solid','solid','solid'],
+            opacity: [0.9,0.9,0.9,0.9, 0.2,0.15, 1, 1, 0.25,1],
+            gradient: { shadeIntensity:1, opacityFrom:0.4, opacityTo:0.0, stops:[0,100] }},
+    plotOptions: { bar: { columnWidth: '80%', borderRadius: 2 }},
+    series: [
+      { name: 'Ladda (sol)',  type:'bar',  data: d.solarCharge, color:'#22c55e' },
+      { name: 'Ladda (nät)',  type:'bar',  data: d.gridCharge,  color:'#60a5fa' },
+      { name: 'Urladdning',   type:'bar',  data: d.discharge,   color:'#f87171' },
+      { name: 'Exportera',    type:'bar',  data: d.export_,     color:'#2dd4bf' },
+      { name: 'Solproduktion',type:'area', data: d.pvLine,      color:'#fbbf24' },
+      { name: 'Förbrukning',  type:'area', data: d.loadLine,    color:'#f87171' },
+      { name: 'Batteri SOC',  type:'line', data: d.socLine,     color:'#38bdf8' },
+      { name: 'Näteffekt',    type:'line', data: d.gridLine,    color:'#94a3b8' },
+      { name: 'Elpris (öre)', type:'line', data: d.buyLine,     color:'#fcd34d' },
+      { name: 'Säljpris',     type:'line', data: d.sellLine,    color:'#86efac' },
+    ],
+    xaxis: {
+      type: 'datetime', min: xMin, max: xMax,
+      labels: { datetimeFormatter: { hour: 'HH:mm' }, style: { colors: '#64748b' }},
+      axisBorder: { color: '#1e2330' }, axisTicks: { color: '#1e2330' },
+    },
+    yaxis: [
+      // 0–8: Watt axis
+      ...Array(8).fill({ min: 0, decimalsInFloat: 0,
+        labels: { style: { colors: '#64748b' }, formatter: v => v == null ? '' : Math.round(v)+' W' }}),
+      // 8: Price axis (right)
+      { opposite: true, min: 0, decimalsInFloat: 0,
+        labels: { style: { colors: '#fcd34d' }, formatter: v => v == null ? '' : Math.round(v)+' öre' }},
+      // 9: Sell price (hidden, shares price axis)
+      { show: false, min: 0 },
+    ],
+    // Override SOC axis (index 6) to show %
+    // We hack it via a second yaxis override below
+    tooltip: {
+      shared: true, intersect: false,
+      x: { format: 'HH:mm' },
+      y: { formatter: (v, {seriesIndex}) => {
+        if (v == null || v === 0) return null;
+        if (seriesIndex === 6) return v.toFixed(1) + ' %';
+        if (seriesIndex >= 8) return Math.round(v) + ' öre/kWh';
+        return Math.round(v) + ' W';
+      }},
+    },
+    annotations: {
+      xaxis: [{ x: now, borderColor: '#ef4444', borderWidth: 2,
+        label: { text: 'NU', style: { color:'#fff', background:'#ef4444', fontFamily:"'DM Sans',sans-serif", fontSize:'11px' }}}],
+    },
+    legend: {
+      show: true, position: 'bottom',
+      labels: { colors: '#94a3b8' },
+      markers: { radius: 4 },
+    },
+    grid: { borderColor: '#1e2330', strokeDashArray: 3 },
+  };
+
+  if (chart) { chart.destroy(); }
+  chart = new ApexCharts(document.getElementById('chart'), opts);
+  chart.render();
+}
+
+// ── Render table ─────────────────────────────────────────────
+function renderTable(rows, avgBuy) {
+  const now = Date.now();
+  // Show from 30 min ago, next 24h, max 96 rows
+  const filtered = rows
+    .filter(r => r.t >= now - 1800000 && r.t <= now + 24*3600000)
+    .slice(0, 96);
+
+  const tbody = document.getElementById('decision-table');
+  tbody.innerHTML = filtered.map(r => {
+    const d   = r.dec;
+    const past = r.t < now;
+    const time = new Date(r.t).toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'});
+    return `<tr style="${past ? 'opacity:.45' : ''}">
+      <td>${time}${past ? ' ↩' : ''}</td>
+      <td style="color:${r.buy > avgBuy*100*1.1 ? '#f87171' : r.buy < avgBuy*100*0.9 ? '#22c55e' : '#e2e8f0'}">${Math.round(r.buy)}</td>
+      <td style="color:#86efac">${Math.round(r.sell)}</td>
+      <td>${Math.round(r.pv)}</td>
+      <td style="color:${r.batt < -50 ? '#22c55e' : r.batt > 50 ? '#f87171' : '#64748b'};font-family:'DM Mono',monospace">
+        ${r.batt < -50 ? '▲ +' : r.batt > 50 ? '▼ ' : '— '}${Math.abs(Math.round(r.batt))} W &nbsp;(${Math.round(r.soc)}%)
+      </td>
+      <td class="decision">
+        <span class="badge" style="background:${d.color}22;color:${d.color}">
+          <span class="dot" style="background:${d.color}"></span>${d.label}
+        </span>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Auto-refresh every 15 min ────────────────────────────────
+setInterval(loadData, 15 * 60 * 1000);
+
+// Initial load if config already set
+if (HA_URL && HA_TOKEN) loadData();
+</script>
+</body>
+</html>
