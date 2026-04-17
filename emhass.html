@@ -517,17 +517,30 @@ function renderChart(d, spanH) {
       axisBorder: { color: '#1e2330' }, axisTicks: { color: '#1e2330' },
     },
     yaxis: [
-      // 0–8: Watt axis
-      ...Array(8).fill({ min: 0, decimalsInFloat: 0,
-        labels: { style: { colors: '#64748b' }, formatter: v => v == null ? '' : Math.round(v)+' W' }}),
-      // 8: Price axis (right)
-      { opposite: true, min: 0, decimalsInFloat: 0,
+      // 0: Ladda sol – Watt vänster (visas)
+      { seriesName: 'Ladda (sol)', min: 0, decimalsInFloat: 0,
+        labels: { style: { colors: '#64748b' }, formatter: v => v == null ? '' : Math.round(v)+' W' }},
+      // 1: Ladda nät – dölj, dela med serie 0
+      { seriesName: 'Ladda (sol)', show: false },
+      // 2: Urladdning – dölj, dela med serie 0
+      { seriesName: 'Ladda (sol)', show: false },
+      // 3: Exportera – dölj, dela med serie 0
+      { seriesName: 'Ladda (sol)', show: false },
+      // 4: Solproduktion – dölj, dela med serie 0
+      { seriesName: 'Ladda (sol)', show: false },
+      // 5: Förbrukning – dölj, dela med serie 0
+      { seriesName: 'Ladda (sol)', show: false },
+      // 6: Batteri SOC – höger axel %
+      { opposite: true, seriesName: 'Batteri SOC', min: 0, max: 100, decimalsInFloat: 0,
+        labels: { style: { colors: '#38bdf8' }, formatter: v => v == null ? '' : Math.round(v)+' %' }},
+      // 7: Näteffekt – dölj, dela med serie 0
+      { seriesName: 'Ladda (sol)', show: false },
+      // 8: Elpris – höger axel öre (dölj titel, dela med SOC-sidan)
+      { opposite: true, seriesName: 'Elpris (öre)', min: 0, decimalsInFloat: 0,
         labels: { style: { colors: '#fcd34d' }, formatter: v => v == null ? '' : Math.round(v)+' öre' }},
-      // 9: Sell price (hidden, shares price axis)
-      { show: false, min: 0 },
+      // 9: Säljpris – dölj, dela med serie 8
+      { seriesName: 'Elpris (öre)', show: false },
     ],
-    // Override SOC axis (index 6) to show %
-    // We hack it via a second yaxis override below
     tooltip: {
       shared: true, intersect: false,
       x: { format: 'HH:mm' },
