@@ -610,12 +610,19 @@ async function runDebug() {
     const data = await r.json();
     const attrs = data.attributes || {};
     const attrKeys = Object.keys(attrs).slice(0, 15);
-    const fcSample = attrs.forecasts ? JSON.stringify(attrs.forecasts[0]) : '(ingen forecasts-nyckel)';
+    const fc = attrs.forecasts || [];
+    const fcFirst = fc.length ? JSON.stringify(fc[0]) : '(tom)';
+    const fcLast  = fc.length ? JSON.stringify(fc[fc.length-1]) : '(tom)';
+    const nonZero = fc.filter(p => {
+      const val = parseFloat(Object.values(p).find((v,i) => Object.keys(p)[i] !== 'date') || 0);
+      return val !== 0;
+    }).length;
     alert(
-      'HTTP ' + r.status + '\n' +
-      'State: ' + data.state + '\n\n' +
-      'Attributnycklar (max 15):\n' + attrKeys.join('\n') + '\n\n' +
-      'forecasts[0]:\n' + fcSample
+      'HTTP ' + r.status + ' | State: ' + data.state + '\n' +
+      'Antal forecast-punkter: ' + fc.length + '\n' +
+      'Varav icke-noll: ' + nonZero + '\n\n' +
+      'Första: ' + fcFirst + '\n\n' +
+      'Sista:  ' + fcLast
     );
   } catch(e) {
     alert('FEL: ' + e.message);
