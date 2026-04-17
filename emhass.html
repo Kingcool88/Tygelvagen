@@ -597,7 +597,7 @@ async function runDebug() {
   alert(lines.join('\n'));
 
   try {
-    const path = '/api/';
+    const path = '/api/states/sensor.mpc_pv_power';
     let url, headers;
     if (WORKER_URL) {
       url = WORKER_URL.replace(/\/$/, '') + path;
@@ -607,8 +607,16 @@ async function runDebug() {
       headers = { 'Authorization': 'Bearer ' + HA_TOKEN, 'Content-Type': 'application/json' };
     }
     const r = await fetch(url, { headers });
-    const text = await r.text();
-    alert('HTTP ' + r.status + '\n\nSvar (första 300 tecken):\n' + text.substring(0, 300));
+    const data = await r.json();
+    const attrs = data.attributes || {};
+    const attrKeys = Object.keys(attrs).slice(0, 15);
+    const fcSample = attrs.forecasts ? JSON.stringify(attrs.forecasts[0]) : '(ingen forecasts-nyckel)';
+    alert(
+      'HTTP ' + r.status + '\n' +
+      'State: ' + data.state + '\n\n' +
+      'Attributnycklar (max 15):\n' + attrKeys.join('\n') + '\n\n' +
+      'forecasts[0]:\n' + fcSample
+    );
   } catch(e) {
     alert('FEL: ' + e.message);
   }
