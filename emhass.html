@@ -190,6 +190,11 @@
       <input id="cfg-token" type="password" placeholder="eyJ0eXAiOiJKV1Qi...">
     </div>
     <div class="field">
+      <label>Cloudflare Worker URL</label>
+      <input id="cfg-worker" type="text" placeholder="https://ha-proxy.DITTNAMN.workers.dev" spellcheck="false">
+      <div style="font-size:0.72rem;color:#64748b;margin-top:4px">Lämna tomt om du bara använder lokalt nätverk</div>
+    </div>
+    <div class="field">
       <label>Nordpool sensor (valfritt)</label>
       <input id="cfg-nordpool" type="text" placeholder="sensor.nordpool_kwh_se4_sek_3_10_025" spellcheck="false">
     </div>
@@ -266,7 +271,8 @@
 
 <script>
 // ── Config ──────────────────────────────────────────────────
-let HA_URL   = localStorage.getItem('ha_url')    || '';
+let HA_URL    = localStorage.getItem('ha_url')     || '';
+let WORKER_URL = localStorage.getItem('ha_worker')  || '';
 let HA_TOKEN = localStorage.getItem('ha_token')  || '';
 let NORDPOOL = localStorage.getItem('ha_nordpool')|| 'sensor.nordpool_kwh_se4_sek_3_10_025';
 
@@ -275,12 +281,14 @@ document.getElementById('cfg-token').value    = HA_TOKEN;
 document.getElementById('cfg-nordpool').value = NORDPOOL;
 
 document.getElementById('config-save').addEventListener('click', () => {
-  HA_URL   = document.getElementById('cfg-url').value.trim().replace(/\/$/, '');
-  HA_TOKEN = document.getElementById('cfg-token').value.trim();
-  NORDPOOL = document.getElementById('cfg-nordpool').value.trim();
+  HA_URL     = document.getElementById('cfg-url').value.trim().replace(/\/$/, '');
+  HA_TOKEN   = document.getElementById('cfg-token').value.trim();
+  NORDPOOL   = document.getElementById('cfg-nordpool').value.trim();
+  WORKER_URL = document.getElementById('cfg-worker').value.trim().replace(/\/$/, '');
   localStorage.setItem('ha_url',      HA_URL);
   localStorage.setItem('ha_token',    HA_TOKEN);
   localStorage.setItem('ha_nordpool', NORDPOOL);
+  localStorage.setItem('ha_worker',   WORKER_URL);
   document.getElementById('config-overlay').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   loadData();
@@ -290,6 +298,7 @@ function openSettings() {
   document.getElementById('cfg-url').value      = HA_URL;
   document.getElementById('cfg-token').value    = HA_TOKEN;
   document.getElementById('cfg-nordpool').value = NORDPOOL;
+  document.getElementById('cfg-worker').value   = WORKER_URL;
   document.getElementById('config-overlay').style.display = 'flex';
 }
 
@@ -298,11 +307,32 @@ if (HA_URL && HA_TOKEN) {
   document.getElementById('app').style.display = 'block';
 }
 
-// ── HA API ───────────────────────────────────────────────────
+// ── HA API via Cloudflare Worker proxy ──────────────────────
+// Worker-URL sparas i localStorage. Sätts i konfigurationsrutan.
+// Om du kör lokalt och inte behöver proxy: lämna Worker URL tomt
+// så anropas HA direkt (fungerar på lokalt nätverk utan CORS-problem).
 async function fetchSensor(entityId) {
-  const r = await fetch(`${HA_URL}/api/states/${entityId}`, {
-    headers: { Authorization: `Bearer ${HA_TOKEN}`, 'Content-Type': 'application/json' }
-  });
+  const path = `/api/states/${entityId}`;
+  let url, headers;
+
+  if (WORKER_URL) {
+    // Via Cloudflare Worker (fungerar överallt)
+    url = WORKER_URL.replace(/\/$/, '') + path;
+    headers = {
+      'X-HA-URL':   HA_URL,
+      'X-HA-Token': HA_TOKEN,
+      'Content-Type': 'application/json',
+    };
+  } else {
+    // Direkt till HA (fungerar bara lokalt)
+    url = HA_URL.replace(/\/$/, '') + path;
+    headers = {
+      'Authorization': `Bearer ${HA_TOKEN}`,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  const r = await fetch(url, { headers });
   if (!r.ok) throw new Error(`${entityId}: HTTP ${r.status}`);
   return r.json();
 }
