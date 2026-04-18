@@ -208,29 +208,29 @@ function openSettings() {
 
 async function debugBatt() {
   try {
-    const [battS, socS] = await Promise.all([
-      haFetch('/api/states/sensor.mpc_batt_power'),
-      haFetch('/api/states/sensor.mpc_batt_soc'),
+    const [buyS, sellS, nordS] = await Promise.all([
+      haFetch('/api/states/sensor.mpc_general_price'),
+      haFetch('/api/states/sensor.mpc_feed_in_price'),
+      haFetch('/api/states/' + NORDPOOL).catch(()=>null),
     ]);
-    const battFc = battS.attributes.forecasts || [];
-    const socFc  = socS.attributes.forecasts  || [];
-    const battKeys = battFc.length ? Object.keys(battFc[0]).join(', ') : '(tom)';
-    const socKeys  = socFc.length  ? Object.keys(socFc[0]).join(', ')  : '(tom)';
-    const battSample = battFc.length ? JSON.stringify(battFc.find(p => parseFloat(Object.values(p).find((_,i)=>Object.keys(p)[i]!=='date'))||0 !== 0) || battFc[0]) : '–';
-    const socSample  = socFc.length  ? JSON.stringify(socFc.find(p  => parseFloat(Object.values(p).find((_,i)=>Object.keys(p)[i]!=='date'))||0 !== 0) || socFc[0])  : '–';
-    const nonZeroBatt = battFc.filter(p => { const k=Object.keys(p).find(k=>k!=='date'); return Math.abs(parseFloat(p[k]))>10; }).length;
-    const nonZeroSoc  = socFc.filter(p  => { const k=Object.keys(p).find(k=>k!=='date'); return parseFloat(p[k])>0; }).length;
+    const buyFc  = buyS.attributes.forecasts  || [];
+    const sellFc = sellS.attributes.forecasts || [];
+    // Find a non-zero buy sample
+    const buySample  = buyFc.find(p  => parseFloat(p.mpc_general_price) !== 0)  || buyFc[0];
+    const sellSample = sellFc.find(p => parseFloat(p.mpc_feed_in_price) !== 0) || sellFc[0];
+    const nordRaw = nordS?.attributes?.raw_today || [];
+    const nordSample = nordRaw[8]; // 08:00
     alert(
-      'mpc_batt_power:\n' +
-      'State: ' + battS.state + '\n' +
-      'Punkter: ' + battFc.length + ' | Icke-noll: ' + nonZeroBatt + '\n' +
-      'Nycklar: ' + battKeys + '\n' +
-      'Exempel: ' + battSample + '\n\n' +
-      'mpc_batt_soc:\n' +
-      'State: ' + socS.state + '\n' +
-      'Punkter: ' + socFc.length + ' | Icke-noll: ' + nonZeroSoc + '\n' +
-      'Nycklar: ' + socKeys + '\n' +
-      'Exempel: ' + socSample
+      'mpc_general_price (köp):\n' +
+      'State: ' + buyS.state + ' ' + (buyS.attributes.unit_of_measurement||'') + '\n' +
+      'Attributnycklar: ' + Object.keys(buyS.attributes).join(', ') + '\n' +
+      'Exempel forecast: ' + JSON.stringify(buySample) + '\n\n' +
+      'mpc_feed_in_price (sälj):\n' +
+      'State: ' + sellS.state + ' ' + (sellS.attributes.unit_of_measurement||'') + '\n' +
+      'Attributnycklar: ' + Object.keys(sellS.attributes).join(', ') + '\n' +
+      'Exempel forecast: ' + JSON.stringify(sellSample) + '\n\n' +
+      'Nordpool raw_today[8] (08:00):\n' +
+      JSON.stringify(nordSample)
     );
   } catch(e) { alert('Fel: ' + e.message); }
 }
@@ -256,14 +256,17 @@ async function haFetch(path) {
 }
 
 // ── Extract forecast from sensor ─────────────────────────────
-// EMHASS uses different attribute names depending on sensor type:
-//   'forecasts'              — pv, load, grid, price sensors
-//   'battery_scheduled_soc'  — mpc_batt_soc
-//   'battery_scheduled_power'— mpc_batt_power
+// EMHASS uses different attribute names per sensor type:
+//   'forecasts'               — pv, load, grid sensors
+//   'unit_load_cost_forecasts' — mpc_general_price (buy)
+//   'unit_prod_price_forecasts'— mpc_feed_in_price (sell)
+//   'battery_scheduled_soc'   — mpc_batt_soc
+//   'battery_scheduled_power' — mpc_batt_power
 function extractFc(sensor) {
   const attrs = sensor?.attributes || {};
-  // Try all known attribute names
   const fc = attrs.forecasts
+          || attrs.unit_load_cost_forecasts
+          || attrs.unit_prod_price_forecasts
           || attrs.battery_scheduled_soc
           || attrs.battery_scheduled_power
           || [];
@@ -442,16 +445,15 @@ async function loadData() {
       const rawTomorrow = nordS.attributes.raw_tomorrow || [];
       [...rawToday, ...rawTomorrow].forEach(h => {
         const t = new Date(h.start).getTime();
-        const ore = h.value * 100;
+        const ore = h.value; // Already in öre (price_in_cents: true)
         nordBars.push([t, ore]);
-        // Store with rounded-to-hour key for lookup
         nordPriceMap[Math.round(t/3600000)*3600000] = ore;
       });
     }
 
     // Price stats — prefer Nordpool raw data, fallback to buyFc
     const nordOreAll = [...(nordS?.attributes?.raw_today||[]), ...(nordS?.attributes?.raw_tomorrow||[])]
-      .map(h => h.value * 100).filter(v => v > 0);
+      .map(h => h.value).filter(v => v > 0); // Already in öre
     const buyOreAll = buyFc.map(p => p.val * 100).filter(v => v > 0);
     const priceArr = nordOreAll.length ? nordOreAll : buyOreAll;
     const avgBuyOre = priceArr.length ? priceArr.reduce((a,b)=>a+b,0)/priceArr.length : 0;
@@ -476,7 +478,7 @@ async function loadData() {
       const buy  = buyMap[t]  ?? 0;
       const sell = sellMap[t] ?? 0;
       const soc  = socMap[t]  ?? 0;
-      const dec  = classify(batt, pv, grid, buy, sell, avgBuyOre/100);
+      const dec  = classify(batt, pv, grid, buy, sell, avgBuyOre / 100);
 
       pvLine.push([t, pv]);
       loadLine.push([t, load]);
@@ -491,9 +493,10 @@ async function loadData() {
       export_.push(    [t, dec.key==='export'       ? Math.abs(grid) : 0]);
 
       // Try Nordpool price for this hour if mpc_general_price is missing
+      // buy is in kr/kWh → *100 = öre; nordOre already in öre
       const nordOre = nordPriceMap[Math.round(t/3600000)*3600000] || nordPriceMap[Math.round((t-1800000)/3600000)*3600000] || 0;
-      const displayBuyOre = buy*100 > 0 ? buy*100 : nordOre;
-      tableRows.push({ t, buyOre: displayBuyOre, sellOre: sell*100, pv, load, batt, soc, grid, dec });
+      const displayBuyOre = buy > 0 ? Math.round(buy * 100) : nordOre;
+      tableRows.push({ t, buyOre: displayBuyOre, sellOre: Math.round(sell * 100), pv, load, batt, soc, grid, dec });
     });
 
     // Fetch history for past 3h to add to table
