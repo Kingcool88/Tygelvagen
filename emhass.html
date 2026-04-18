@@ -117,6 +117,7 @@ td.mono{font-family:'DM Mono',monospace}
       <span class="last-update" id="last-update">–</span>
       <button class="btn" onclick="loadData()">↺ Uppdatera</button>
       <button class="btn-icon" onclick="openSettings()">⚙</button>
+      <button class="btn-icon" onclick="debugBatt()" title="Debug batteri">🔋</button>
     </div>
   </div>
 
@@ -205,6 +206,35 @@ function openSettings() {
   document.getElementById('config-overlay').style.display = 'flex';
 }
 
+async function debugBatt() {
+  try {
+    const [battS, socS] = await Promise.all([
+      haFetch('/api/states/sensor.mpc_batt_power'),
+      haFetch('/api/states/sensor.mpc_batt_soc'),
+    ]);
+    const battFc = battS.attributes.forecasts || [];
+    const socFc  = socS.attributes.forecasts  || [];
+    const battKeys = battFc.length ? Object.keys(battFc[0]).join(', ') : '(tom)';
+    const socKeys  = socFc.length  ? Object.keys(socFc[0]).join(', ')  : '(tom)';
+    const battSample = battFc.length ? JSON.stringify(battFc.find(p => parseFloat(Object.values(p).find((_,i)=>Object.keys(p)[i]!=='date'))||0 !== 0) || battFc[0]) : '–';
+    const socSample  = socFc.length  ? JSON.stringify(socFc.find(p  => parseFloat(Object.values(p).find((_,i)=>Object.keys(p)[i]!=='date'))||0 !== 0) || socFc[0])  : '–';
+    const nonZeroBatt = battFc.filter(p => { const k=Object.keys(p).find(k=>k!=='date'); return Math.abs(parseFloat(p[k]))>10; }).length;
+    const nonZeroSoc  = socFc.filter(p  => { const k=Object.keys(p).find(k=>k!=='date'); return parseFloat(p[k])>0; }).length;
+    alert(
+      'mpc_batt_power:\n' +
+      'State: ' + battS.state + '\n' +
+      'Punkter: ' + battFc.length + ' | Icke-noll: ' + nonZeroBatt + '\n' +
+      'Nycklar: ' + battKeys + '\n' +
+      'Exempel: ' + battSample + '\n\n' +
+      'mpc_batt_soc:\n' +
+      'State: ' + socS.state + '\n' +
+      'Punkter: ' + socFc.length + ' | Icke-noll: ' + nonZeroSoc + '\n' +
+      'Nycklar: ' + socKeys + '\n' +
+      'Exempel: ' + socSample
+    );
+  } catch(e) { alert('Fel: ' + e.message); }
+}
+
 if (HA_URL && HA_TOKEN) {
   document.getElementById('config-overlay').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -226,8 +256,17 @@ async function haFetch(path) {
 }
 
 // ── Extract forecast from sensor ─────────────────────────────
+// EMHASS uses different attribute names depending on sensor type:
+//   'forecasts'              — pv, load, grid, price sensors
+//   'battery_scheduled_soc'  — mpc_batt_soc
+//   'battery_scheduled_power'— mpc_batt_power
 function extractFc(sensor) {
-  const fc = sensor?.attributes?.forecasts || [];
+  const attrs = sensor?.attributes || {};
+  // Try all known attribute names
+  const fc = attrs.forecasts
+          || attrs.battery_scheduled_soc
+          || attrs.battery_scheduled_power
+          || [];
   if (!fc.length) return [];
   const valKey = Object.keys(fc[0]).find(k => k !== 'date');
   return fc.map(p => {
@@ -245,14 +284,18 @@ function roundT(t) { return Math.round(t/900000)*900000; }
 
 // ── Decision logic ───────────────────────────────────────────
 function classify(batt, pv, grid, buy, sell, avgBuy) {
-  const charging    = batt < -50;
-  const discharging = batt >  50;
-  const exporting   = grid < -50;
+  // EMHASS convention: positive batt = urladdning (discharge), negative = laddning (charge)
+  const charging    = batt < -50;   // laddar batteri
+  const discharging = batt >  50;   // urladdar batteri
+  const exporting   = grid < -50;   // säljer till nät (negativ = ut på nät)
+
   if (charging && pv >= Math.abs(batt)*0.7) return { key:'solar_charge', label:'Ladda (sol)',  color:'#22c55e' };
   if (charging)                              return { key:'grid_charge',  label:'Ladda (nät)',  color:'#60a5fa' };
   if (discharging && exporting)              return { key:'sell_solar',   label:'Sälj sol',     color:'#4ade80' };
-  if (discharging)                           return { key:'cover_house',  label:'Täck huset',   color:'#fb923c' };
+  if (discharging && pv > 200)               return { key:'cover_house',  label:'Täck huset',   color:'#fb923c' };
+  if (discharging)                           return { key:'discharge',    label:'Urladdning',   color:'#f87171' };
   if (exporting)                             return { key:'export',       label:'Exportera',    color:'#2dd4bf' };
+  if (pv > 200 && grid < 50)                 return { key:'cover_house',  label:'Täck huset',   color:'#fb923c' };
   if (buy > avgBuy * 1.15)                   return { key:'wait',         label:'Vänta',        color:'#94a3b8' };
   return                                            { key:'observe',      label:'Observera',    color:'#64748b' };
 }
@@ -441,6 +484,7 @@ async function loadData() {
       gridLine.push([t, grid]);
       sellLine.push([t, sell * 100]);
 
+      // batt < 0 = laddning, batt > 0 = urladdning
       solarCharge.push([t, dec.key==='solar_charge' ? Math.abs(batt) : 0]);
       gridCharge.push( [t, dec.key==='grid_charge'  ? Math.abs(batt) : 0]);
       discharge.push(  [t, batt > 50 ? batt : 0]);
@@ -550,7 +594,7 @@ function renderTable(histRows, forecastRows) {
       <td class="mono" style="color:#86efac">${r.sellOre>0?Math.round(r.sellOre):'–'}</td>
       <td class="mono" style="color:#fbbf24">${Math.round(r.pv)||'0'}</td>
       <td class="mono">${Math.round(r.load)||'–'}</td>
-      <td class="mono" style="color:${battColor}">${r.batt!==0?battDir+' '+Math.abs(Math.round(r.batt))+' W':'–'}</td>
+      <td class="mono" style="color:${battColor};font-size:0.8rem">${Math.abs(r.batt)>50?battDir+' '+Math.abs(Math.round(r.batt))+' W':'–'}</td>
       <td class="mono" style="color:#38bdf8">${r.soc>0?Math.round(r.soc)+' %':'–'}</td>
       <td>${r.dec.key==='history'?'<span style="color:#64748b">historik</span>':`<span class="badge" style="background:${r.dec.color}22;color:${r.dec.color}"><span class="dot" style="background:${r.dec.color}"></span>${r.dec.label}</span>`}</td>
     </tr>`;
