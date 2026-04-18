@@ -3,20 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>⚡ EMHASS Energiplan</title>
+<title>EMHASS Energiplan</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.46.0/apexcharts.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0f1117;--surface:#181c26;--surface2:#1e2330;--border:#2a2f3d;
-  --text:#e2e8f0;--muted:#64748b;
-  --green:#22c55e;--blue:#60a5fa;--orange:#fb923c;--yellow:#fbbf24;
-  --red:#f87171;--cyan:#34d399;--purple:#a78bfa;--gray:#94a3b8;
-}
+:root{--bg:#0f1117;--surface:#181c26;--surface2:#1e2330;--border:#2a2f3d;--text:#e2e8f0;--muted:#64748b;--green:#22c55e;--blue:#60a5fa;--orange:#fb923c;--yellow:#fbbf24;--red:#f87171;--cyan:#34d399;}
 html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;min-height:100vh}
-
-/* Config overlay */
 #config-overlay{position:fixed;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
 #config-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;width:min(480px,92vw);box-shadow:0 24px 64px #0008}
 #config-box h2{font-size:1.25rem;font-weight:600;margin-bottom:8px}
@@ -26,56 +19,48 @@ html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-seri
 .field input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.875rem;outline:none;transition:border-color .2s}
 .field input:focus{border-color:var(--blue)}
 .field small{display:block;font-size:0.72rem;color:var(--muted);margin-top:4px}
-#config-save{width:100%;padding:12px;background:var(--blue);border:none;border-radius:8px;color:#fff;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;transition:opacity .2s;margin-top:8px}
-#config-save:hover{opacity:.85}
-
-/* Layout */
-#app{display:none;max-width:1000px;margin:0 auto;padding:20px 16px 40px}
-
-/* Header */
+#config-save{width:100%;padding:12px;background:var(--blue);border:none;border-radius:8px;color:#fff;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;margin-top:8px}
+#app{display:none;max-width:1100px;margin:0 auto;padding:20px 16px 40px}
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
 .page-title{display:flex;align-items:center;gap:10px}
 .page-title h1{font-size:1.4rem;font-weight:600}
 .status-row{display:flex;align-items:center;gap:8px}
 .last-update{font-size:0.78rem;color:var(--muted);font-family:'DM Mono',monospace}
-.btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 14px;color:var(--text);font-size:0.8rem;cursor:pointer;transition:background .2s;font-family:'DM Sans',sans-serif}
-.btn:hover{background:var(--border)}
-.btn-icon{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted);cursor:pointer;font-size:1rem;transition:color .2s}
-.btn-icon:hover{color:var(--text)}
-
-/* Stats */
-.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 14px;color:var(--text);font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif}
+.btn-icon{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted);cursor:pointer;font-size:1rem}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
-.stat-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px}
+.stat-label{font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px}
 .stat-value{font-size:1.5rem;font-weight:600;font-family:'DM Mono',monospace}
 .stat-unit{font-size:0.8rem;color:var(--muted);margin-left:2px}
 .stat-low .stat-value{color:var(--green)}
 .stat-high .stat-value{color:var(--orange)}
-
-/* Cards */
+.econ-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.econ-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;transition:border-color .3s}
+.econ-label{font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px}
+.econ-value{font-size:1.3rem;font-weight:600;font-family:'DM Mono',monospace}
+.econ-sub{font-size:0.72rem;color:var(--muted);margin-top:3px}
+.econ-positive{border-color:#22c55e44}.econ-positive .econ-value{color:var(--green)}
+.econ-negative{border-color:#f8717144}.econ-negative .econ-value{color:var(--red)}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 16px 12px;margin-bottom:16px}
 .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
 .card-title{font-size:1rem;font-weight:600}
 .card-sub{font-size:0.78rem;color:var(--muted);margin-bottom:14px}
 .span-btns{display:flex;gap:6px}
-.span-btn{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 12px;color:var(--muted);font-size:0.78rem;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
+.span-btn{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 12px;color:var(--muted);font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif}
 .span-btn.active,.span-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--blue)}
-
-/* Table */
 .table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:0.85rem}
+table{width:100%;border-collapse:collapse;font-size:0.82rem}
 thead tr{border-bottom:1px solid var(--border)}
-thead th{text-align:left;padding:8px 10px;font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:500}
+thead th{text-align:left;padding:8px 8px;font-size:0.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:500;white-space:nowrap}
 tbody tr{border-bottom:1px solid #ffffff08;transition:background .15s}
 tbody tr:hover{background:var(--surface2)}
 tbody tr.is-now{background:#60a5fa11;border-left:2px solid var(--blue)}
 tbody tr.is-past{opacity:.4}
-tbody td{padding:8px 10px}
+tbody td{padding:7px 8px;white-space:nowrap}
 td.mono{font-family:'DM Mono',monospace}
-.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:20px;font-size:0.78rem}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:20px;font-size:0.76rem}
 .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-
-/* Loading */
 .loading{text-align:center;padding:48px 20px;color:var(--muted)}
 .spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -83,333 +68,230 @@ td.mono{font-family:'DM Mono',monospace}
 </style>
 </head>
 <body>
-
 <div id="config-overlay">
   <div id="config-box">
-    <h2>⚡ EMHASS Dashboard</h2>
+    <h2>&#9889; EMHASS Dashboard</h2>
     <p>Anslut till din Home Assistant via Nabu Casa eller lokal IP.</p>
-    <div class="field">
-      <label>HA URL</label>
-      <input id="cfg-url" type="text" placeholder="https://DITT-ID.ui.nabu.casa" spellcheck="false">
-    </div>
-    <div class="field">
-      <label>Long-Lived Access Token</label>
-      <input id="cfg-token" type="password" placeholder="eyJ...">
-      <small>Skapas i HA under Profil → Säkerhet → Tokens längst ned</small>
-    </div>
-    <div class="field">
-      <label>Cloudflare Worker URL</label>
-      <input id="cfg-worker" type="text" placeholder="https://ha-proxy.DITTNAMN.workers.dev" spellcheck="false">
-      <small>Krävs för åtkomst utanför hemmanätverket. Lämna tomt vid lokal åtkomst.</small>
-    </div>
-    <div class="field">
-      <label>Nordpool sensor</label>
-      <input id="cfg-nordpool" type="text" placeholder="sensor.nordpool_kwh_se4_sek_3_10_025" spellcheck="false">
-    </div>
+    <div class="field"><label>HA URL</label><input id="cfg-url" type="text" placeholder="https://DITT-ID.ui.nabu.casa" spellcheck="false"></div>
+    <div class="field"><label>Long-Lived Access Token</label><input id="cfg-token" type="password" placeholder="eyJ..."></div>
+    <div class="field"><label>Cloudflare Worker URL</label><input id="cfg-worker" type="text" placeholder="https://ha-proxy.DITTNAMN.workers.dev" spellcheck="false"><small>Kravs utanfor hemmanatverket.</small></div>
+    <div class="field"><label>Nordpool sensor</label><input id="cfg-nordpool" type="text" placeholder="sensor.nordpool_kwh_se4_sek_3_10_025" spellcheck="false"></div>
     <button id="config-save">Spara och anslut</button>
   </div>
 </div>
-
 <div id="app">
   <div class="page-header">
-    <div class="page-title"><span>⚡</span><h1>Elpris &amp; Schema</h1></div>
+    <div class="page-title"><span>&#9889;</span><h1>Elpris &amp; Schema</h1></div>
     <div class="status-row">
-      <span class="last-update" id="last-update">–</span>
-      <button class="btn" onclick="loadData()">↺ Uppdatera</button>
-      <button class="btn-icon" onclick="openSettings()">⚙</button>
-      <button class="btn-icon" onclick="debugBatt()" title="Debug batteri">🔋</button>
+      <span class="last-update" id="last-update">-</span>
+      <button class="btn" onclick="loadData()">&#8634; Uppdatera</button>
+      <button class="btn-icon" onclick="openSettings()">&#9881;</button>
     </div>
   </div>
-
   <div class="stat-row">
-    <div class="stat-card stat-low">
-      <div class="stat-label">Lägsta</div>
-      <div><span class="stat-value" id="price-low">–</span><span class="stat-unit">öre/kWh</span></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Medel</div>
-      <div><span class="stat-value" id="price-avg">–</span><span class="stat-unit">öre/kWh</span></div>
-    </div>
-    <div class="stat-card stat-high">
-      <div class="stat-label">Högsta</div>
-      <div><span class="stat-value" id="price-high">–</span><span class="stat-unit">öre/kWh</span></div>
-    </div>
+    <div class="stat-card stat-low"><div class="stat-label">Lagsta idag</div><div><span class="stat-value" id="price-low">-</span><span class="stat-unit">ore/kWh</span></div></div>
+    <div class="stat-card"><div class="stat-label">Medel idag</div><div><span class="stat-value" id="price-avg">-</span><span class="stat-unit">ore/kWh</span></div></div>
+    <div class="stat-card stat-high"><div class="stat-label">Hogsta idag</div><div><span class="stat-value" id="price-high">-</span><span class="stat-unit">ore/kWh</span></div></div>
   </div>
-
+  <div class="econ-row">
+    <div class="econ-card" id="econ-sf-card"><div class="econ-label">Hittills idag</div><div class="econ-value" id="econ-sf">-</div><div class="econ-sub" id="econ-sf-sub">beraknas</div></div>
+    <div class="econ-card" id="econ-fc-card"><div class="econ-label">Prognos resten av dagen</div><div class="econ-value" id="econ-fc">-</div><div class="econ-sub" id="econ-fc-sub">beraknas</div></div>
+    <div class="econ-card" id="econ-tot-card"><div class="econ-label">Totalt idag (prognos)</div><div class="econ-value" id="econ-tot">-</div><div class="econ-sub" id="econ-tot-sub">kostnad minus intakt</div></div>
+  </div>
   <div class="card">
     <div class="card-header">
       <span class="card-title">IDAG</span>
       <div class="span-btns">
-        <button class="span-btn" data-h="12" onclick="setSpan(this,12)">12h</button>
-        <button class="span-btn active" data-h="24" onclick="setSpan(this,24)">24h</button>
-        <button class="span-btn" data-h="48" onclick="setSpan(this,48)">48h</button>
+        <button class="span-btn active" onclick="setSpan(this,12)">12h</button>
+        <button class="span-btn" onclick="setSpan(this,24)">24h</button>
+        <button class="span-btn" onclick="setSpan(this,48)">48h</button>
       </div>
     </div>
-    <div class="card-sub">EMHASS-plan per kvart · uppdateras var 15:e minut</div>
-    <div id="chart-loading" class="loading"><div class="spinner"></div>Hämtar data…</div>
+    <div class="card-sub">EMHASS-plan per kvart · 2h bak fran nu + framat · uppdateras var 15:e minut</div>
+    <div id="chart-loading" class="loading"><div class="spinner"></div>Hamtar data...</div>
     <div id="chart-error" class="error-msg" style="display:none"></div>
     <div id="chart" style="display:none;min-height:320px"></div>
   </div>
-
   <div class="card">
-    <div class="card-header"><span class="card-title">🕐 Beslutstabell</span></div>
-    <div class="card-sub">Historik (↩) och plan framåt · köp/säljpris · batteribeslut</div>
+    <div class="card-header"><span class="card-title">&#128336; Beslutstabell</span></div>
+    <div class="card-sub">Historik och plan framat · kostnader och intakter per kvart</div>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Tid</th>
-          <th>Köp (öre)</th>
-          <th>Sälj (öre)</th>
-          <th>Sol (W)</th>
-          <th>Last (W)</th>
-          <th>Batteri</th>
-          <th>SOC %</th>
-          <th>Beslut</th>
+          <th>Tid</th><th>Kop (ore)</th><th>Salj (ore)</th><th>Sol (W)</th><th>Last (W)</th><th>Batteri</th><th>SOC %</th><th>Kr/kvart</th><th>Beslut</th>
         </tr></thead>
         <tbody id="decision-table"></tbody>
       </table>
     </div>
   </div>
 </div>
-
 <script>
-// ── Config ───────────────────────────────────────────────────
-let HA_URL     = localStorage.getItem('ha_url')     || '';
-let HA_TOKEN   = localStorage.getItem('ha_token')   || '';
-let WORKER_URL = localStorage.getItem('ha_worker')  || '';
-let NORDPOOL   = localStorage.getItem('ha_nordpool')|| 'sensor.nordpool_kwh_se4_sek_3_10_025';
+var HA_URL=localStorage.getItem('ha_url')||'';
+var HA_TOKEN=localStorage.getItem('ha_token')||'';
+var WORKER_URL=localStorage.getItem('ha_worker')||'';
+var NORDPOOL=localStorage.getItem('ha_nordpool')||'sensor.nordpool_kwh_se4_sek_3_10_025';
+var avgOreGlobal=84;
 
-function fillConfig() {
-  document.getElementById('cfg-url').value     = HA_URL;
-  document.getElementById('cfg-token').value   = HA_TOKEN;
-  document.getElementById('cfg-worker').value  = WORKER_URL;
-  document.getElementById('cfg-nordpool').value= NORDPOOL;
+function fillConfig(){
+  document.getElementById('cfg-url').value=HA_URL;
+  document.getElementById('cfg-token').value=HA_TOKEN;
+  document.getElementById('cfg-worker').value=WORKER_URL;
+  document.getElementById('cfg-nordpool').value=NORDPOOL;
 }
 fillConfig();
 
-document.getElementById('config-save').addEventListener('click', () => {
-  HA_URL     = document.getElementById('cfg-url').value.trim().replace(/\/$/,'');
-  HA_TOKEN   = document.getElementById('cfg-token').value.trim();
-  WORKER_URL = document.getElementById('cfg-worker').value.trim().replace(/\/$/,'');
-  NORDPOOL   = document.getElementById('cfg-nordpool').value.trim();
-  localStorage.setItem('ha_url',      HA_URL);
-  localStorage.setItem('ha_token',    HA_TOKEN);
-  localStorage.setItem('ha_worker',   WORKER_URL);
-  localStorage.setItem('ha_nordpool', NORDPOOL);
-  document.getElementById('config-overlay').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
+document.getElementById('config-save').addEventListener('click',function(){
+  HA_URL=document.getElementById('cfg-url').value.trim().replace(/\/$/,'');
+  HA_TOKEN=document.getElementById('cfg-token').value.trim();
+  WORKER_URL=document.getElementById('cfg-worker').value.trim().replace(/\/$/,'');
+  NORDPOOL=document.getElementById('cfg-nordpool').value.trim();
+  localStorage.setItem('ha_url',HA_URL);
+  localStorage.setItem('ha_token',HA_TOKEN);
+  localStorage.setItem('ha_worker',WORKER_URL);
+  localStorage.setItem('ha_nordpool',NORDPOOL);
+  document.getElementById('config-overlay').style.display='none';
+  document.getElementById('app').style.display='block';
   loadData();
 });
 
-function openSettings() {
-  fillConfig();
-  document.getElementById('config-overlay').style.display = 'flex';
-}
+function openSettings(){fillConfig();document.getElementById('config-overlay').style.display='flex';}
+if(HA_URL&&HA_TOKEN){document.getElementById('config-overlay').style.display='none';document.getElementById('app').style.display='block';}
 
-async function debugBatt() {
-  try {
-    const [buyS, sellS, nordS] = await Promise.all([
-      haFetch('/api/states/sensor.mpc_general_price'),
-      haFetch('/api/states/sensor.mpc_feed_in_price'),
-      haFetch('/api/states/' + NORDPOOL).catch(()=>null),
-    ]);
-    const buyFc  = buyS.attributes.forecasts  || [];
-    const sellFc = sellS.attributes.forecasts || [];
-    // Find a non-zero buy sample
-    const buySample  = buyFc.find(p  => parseFloat(p.mpc_general_price) !== 0)  || buyFc[0];
-    const sellSample = sellFc.find(p => parseFloat(p.mpc_feed_in_price) !== 0) || sellFc[0];
-    const nordRaw = nordS?.attributes?.raw_today || [];
-    const nordSample = nordRaw[8]; // 08:00
-    alert(
-      'mpc_general_price (köp):\n' +
-      'State: ' + buyS.state + ' ' + (buyS.attributes.unit_of_measurement||'') + '\n' +
-      'Attributnycklar: ' + Object.keys(buyS.attributes).join(', ') + '\n' +
-      'Exempel forecast: ' + JSON.stringify(buySample) + '\n\n' +
-      'mpc_feed_in_price (sälj):\n' +
-      'State: ' + sellS.state + ' ' + (sellS.attributes.unit_of_measurement||'') + '\n' +
-      'Attributnycklar: ' + Object.keys(sellS.attributes).join(', ') + '\n' +
-      'Exempel forecast: ' + JSON.stringify(sellSample) + '\n\n' +
-      'Nordpool raw_today[8] (08:00):\n' +
-      JSON.stringify(nordSample)
-    );
-  } catch(e) { alert('Fel: ' + e.message); }
-}
-
-if (HA_URL && HA_TOKEN) {
-  document.getElementById('config-overlay').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-}
-
-// ── API ──────────────────────────────────────────────────────
-async function haFetch(path) {
-  let url, headers;
-  if (WORKER_URL) {
-    url     = WORKER_URL + path;
-    headers = { 'X-HA-URL': HA_URL, 'X-HA-Token': HA_TOKEN, 'Content-Type': 'application/json' };
-  } else {
-    url     = HA_URL + path;
-    headers = { 'Authorization': 'Bearer ' + HA_TOKEN, 'Content-Type': 'application/json' };
-  }
-  const r = await fetch(url, { headers });
-  if (!r.ok) throw new Error('HTTP ' + r.status + ' · ' + path);
+async function haFetch(path){
+  var url,headers;
+  if(WORKER_URL){url=WORKER_URL+path;headers={'X-HA-URL':HA_URL,'X-HA-Token':HA_TOKEN,'Content-Type':'application/json'};}
+  else{url=HA_URL+path;headers={'Authorization':'Bearer '+HA_TOKEN,'Content-Type':'application/json'};}
+  var r=await fetch(url,{headers:headers});
+  if(!r.ok) throw new Error('HTTP '+r.status+' '+path);
   return r.json();
 }
 
-// ── Extract forecast from sensor ─────────────────────────────
-// EMHASS uses different attribute names per sensor type:
-//   'forecasts'               — pv, load, grid sensors
-//   'unit_load_cost_forecasts' — mpc_general_price (buy)
-//   'unit_prod_price_forecasts'— mpc_feed_in_price (sell)
-//   'battery_scheduled_soc'   — mpc_batt_soc
-//   'battery_scheduled_power' — mpc_batt_power
-function extractFc(sensor) {
-  const attrs = sensor?.attributes || {};
-  const fc = attrs.forecasts
-          || attrs.unit_load_cost_forecasts
-          || attrs.unit_prod_price_forecasts
-          || attrs.battery_scheduled_soc
-          || attrs.battery_scheduled_power
-          || [];
-  if (!fc.length) return [];
-  const valKey = Object.keys(fc[0]).find(k => k !== 'date');
-  return fc.map(p => {
-    const t = new Date(p.date).getTime();
-    return { t: Math.round(t/900000)*900000, val: parseFloat(p[valKey]) || 0 };
-  });
-}
-function toMap(arr) {
-  const m={};
-  // Round to nearest 15-min bucket for robust matching
-  arr.forEach(p => { m[Math.round(p.t/900000)*900000] = p.val; });
-  return m;
-}
-function roundT(t) { return Math.round(t/900000)*900000; }
-
-// ── Decision logic ───────────────────────────────────────────
-function classify(batt, pv, grid, buy, sell, avgBuy) {
-  // EMHASS convention: positive batt = urladdning (discharge), negative = laddning (charge)
-  const charging    = batt < -50;   // laddar batteri
-  const discharging = batt >  50;   // urladdar batteri
-  const exporting   = grid < -50;   // säljer till nät (negativ = ut på nät)
-
-  if (charging && pv >= Math.abs(batt)*0.7) return { key:'solar_charge', label:'Ladda (sol)',  color:'#22c55e' };
-  if (charging)                              return { key:'grid_charge',  label:'Ladda (nät)',  color:'#60a5fa' };
-  if (discharging && exporting)              return { key:'sell_solar',   label:'Sälj sol',     color:'#4ade80' };
-  if (discharging && pv > 200)               return { key:'cover_house',  label:'Täck huset',   color:'#fb923c' };
-  if (discharging)                           return { key:'discharge',    label:'Urladdning',   color:'#f87171' };
-  if (exporting)                             return { key:'export',       label:'Exportera',    color:'#2dd4bf' };
-  if (pv > 200 && grid < 50)                 return { key:'cover_house',  label:'Täck huset',   color:'#fb923c' };
-  if (buy > avgBuy * 1.15)                   return { key:'wait',         label:'Vänta',        color:'#94a3b8' };
-  return                                            { key:'observe',      label:'Observera',    color:'#64748b' };
+function extractFc(sensor){
+  var attrs=sensor&&sensor.attributes?sensor.attributes:{};
+  var fc=attrs.forecasts||attrs.unit_load_cost_forecasts||attrs.unit_prod_price_forecasts||attrs.battery_scheduled_soc||attrs.battery_scheduled_power||[];
+  if(!fc.length) return [];
+  var valKey=Object.keys(fc[0]).find(function(k){return k!=='date';});
+  return fc.map(function(p){return{t:Math.round(new Date(p.date).getTime()/900000)*900000,val:parseFloat(p[valKey])||0};});
 }
 
-// ── Chart ────────────────────────────────────────────────────
-let chart = null;
-let currentSpanH = 24;
-let allData = null;
+function toMap(arr){var m={};arr.forEach(function(p){m[p.t]=p.val;});return m;}
 
-function setSpan(btn, h) {
-  document.querySelectorAll('.span-btn').forEach(b => b.classList.remove('active'));
+function classify(batt,pv,grid,buyKr,sellKr,avgBuyKr){
+  var charging=batt<-50,discharging=batt>50,exporting=grid<-50;
+  if(charging&&pv>=Math.abs(batt)*0.7) return{key:'solar_charge',label:'Ladda (sol)',color:'#22c55e'};
+  if(charging) return{key:'grid_charge',label:'Ladda (nat)',color:'#60a5fa'};
+  if(discharging&&exporting) return{key:'sell_solar',label:'Salj sol',color:'#4ade80'};
+  if(discharging) return{key:'discharge',label:'Urladdning',color:'#f87171'};
+  if(exporting) return{key:'export',label:'Exportera',color:'#2dd4bf'};
+  if(pv>200&&Math.abs(grid)<100) return{key:'cover_house',label:'Tack huset',color:'#fb923c'};
+  if(buyKr>avgBuyKr*1.15) return{key:'wait',label:'Vanta',color:'#94a3b8'};
+  return{key:'observe',label:'Observera',color:'#64748b'};
+}
+
+function slotEconomy(batt,pv,load,grid,buyKr,sellKr){
+  var h=0.25;
+  var gridBuyW=Math.max(0,grid);
+  var gridSellW=Math.max(0,-grid);
+  var costKr=(gridBuyW/1000)*h*buyKr;
+  var incomeKr=(gridSellW/1000)*h*sellKr;
+  return incomeKr-costKr;
+}
+
+var chart=null;
+var currentSpanH=12;
+var allData=null;
+
+function setSpan(btn,h){
+  document.querySelectorAll('.span-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
-  currentSpanH = h;
-  if (allData) renderChart(allData, h);
+  currentSpanH=h;
+  if(allData) renderChart(allData,h);
 }
 
-function renderChart(d, spanH) {
-  const midnight = new Date(); midnight.setHours(0,0,0,0);
-  const xMin = midnight.getTime();
-  const xMax = xMin + spanH * 3600000;
-  const now  = Date.now();
-
-  const opts = {
-    chart: {
-      type: 'line', height: 340, background: 'transparent',
-      toolbar: { show: true, tools: { download:false, selection:false, zoom:true, zoomin:true, zoomout:true, pan:true, reset:true }},
-      fontFamily: "'DM Sans',sans-serif",
-      animations: { enabled: false },
-      events: { mounted: () => {} },
-    },
-    theme: { mode: 'dark' },
-    dataLabels: { enabled: false },
-    stroke: {
-      curve: ['stepline','stepline','stepline','stepline','smooth','smooth','smooth','stepline','stepline','stepline'],
-      width: [0, 0, 0, 0, 2, 2, 2, 1.5, 0, 1],
-    },
-    fill: {
-      type:    ['solid','solid','solid','solid','gradient','gradient','solid','solid','gradient','solid'],
-      opacity: [0.85,   0.85,   0.85,   0.85,   0.2,       0.15,     1,      1,      0.15,   1],
-      gradient: { shadeIntensity:1, opacityFrom:0.4, opacityTo:0.0, stops:[0,100] },
-    },
-    plotOptions: { bar: { columnWidth:'85%', borderRadius:2 }},
-    series: [
-      { name:'Ladda (sol)',   type:'bar',  data: d.solarCharge, color:'#22c55e' },
-      { name:'Ladda (nät)',   type:'bar',  data: d.gridCharge,  color:'#60a5fa' },
-      { name:'Urladdning',    type:'bar',  data: d.discharge,   color:'#f87171' },
-      { name:'Exportera',     type:'bar',  data: d.export_,     color:'#2dd4bf' },
-      { name:'Solproduktion', type:'area', data: d.pvLine,      color:'#fbbf24' },
-      { name:'Förbrukning',   type:'area', data: d.loadLine,    color:'#f87171' },
-      { name:'Batteri SOC',   type:'line', data: d.socLine,     color:'#38bdf8' },
-      { name:'Näteffekt',     type:'line', data: d.gridLine,    color:'#94a3b8' },
-      { name:'Nordpool (öre)',type:'area', data: d.nordBars,    color:'#fcd34d' },
-      { name:'Säljpris',      type:'line', data: d.sellLine,    color:'#86efac' },
+function renderChart(d,spanH){
+  var now=Date.now();
+  var xMin=now-2*3600000;
+  var xMax=xMin+spanH*3600000;
+  var opts={
+    chart:{type:'line',height:360,background:'transparent',toolbar:{show:true,tools:{download:false,selection:false,zoom:true,zoomin:true,zoomout:true,pan:true,reset:true}},fontFamily:"'DM Sans',sans-serif",animations:{enabled:false}},
+    theme:{mode:'dark'},
+    dataLabels:{enabled:false},
+    stroke:{curve:['stepline','stepline','stepline','stepline','smooth','smooth','smooth','stepline','stepline','stepline'],width:[0,0,0,0,2,2,2,1.5,0,1]},
+    fill:{type:['solid','solid','solid','solid','gradient','gradient','solid','solid','gradient','solid'],opacity:[0.85,0.85,0.85,0.85,0.2,0.15,1,1,0.18,1],gradient:{shadeIntensity:1,opacityFrom:0.4,opacityTo:0.0,stops:[0,100]}},
+    plotOptions:{bar:{columnWidth:'85%',borderRadius:2}},
+    series:[
+      {name:'Ladda (sol)',type:'bar',data:d.solarCharge,color:'#22c55e'},
+      {name:'Ladda (nat)',type:'bar',data:d.gridCharge,color:'#60a5fa'},
+      {name:'Urladdning',type:'bar',data:d.discharge,color:'#f87171'},
+      {name:'Exportera',type:'bar',data:d.export_,color:'#2dd4bf'},
+      {name:'Solproduktion',type:'area',data:d.pvLine,color:'#fbbf24'},
+      {name:'Forbrukning',type:'area',data:d.loadLine,color:'#f87171'},
+      {name:'Batteri SOC',type:'line',data:d.socLine,color:'#38bdf8'},
+      {name:'Nateffekt',type:'line',data:d.gridLine,color:'#94a3b8'},
+      {name:'Nordpool (ore)',type:'area',data:d.nordBars,color:'#fcd34d'},
+      {name:'Saljpris',type:'line',data:d.sellLine,color:'#86efac'},
     ],
-    xaxis: {
-      type:'datetime', min:xMin, max:xMax,
-      labels:{ datetimeFormatter:{ hour:'HH:mm' }, style:{ colors:'#64748b' }},
-      axisBorder:{ color:'#1e2330' }, axisTicks:{ color:'#1e2330' },
-    },
-    yaxis: [
-      // Watt (vänster) — visas för serie 0
-      { seriesName:'Ladda (sol)', min:0, decimalsInFloat:0,
-        labels:{ style:{ colors:'#64748b' }, formatter: v => v==null?'':Math.round(v)+' W' }},
-      { seriesName:'Ladda (sol)', show:false },
-      { seriesName:'Ladda (sol)', show:false },
-      { seriesName:'Ladda (sol)', show:false },
-      { seriesName:'Ladda (sol)', show:false },
-      { seriesName:'Ladda (sol)', show:false },
-      // SOC % (höger) — serie 6
-      { opposite:true, seriesName:'Batteri SOC', min:0, max:100, decimalsInFloat:0,
-        labels:{ style:{ colors:'#38bdf8' }, formatter: v => v==null?'':Math.round(v)+' %' }},
-      // Näteffekt — dölj, dela watt — serie 7
-      { seriesName:'Ladda (sol)', show:false },
-      // Öre (höger) — serie 8 — egen axel, max 500 öre
-      { opposite:true, seriesName:'Nordpool (öre)', min:0, max:500, decimalsInFloat:0,
-        labels:{ style:{ colors:'#fcd34d' }, formatter: v => v==null?'':Math.round(v)+' öre' }},
-      // Säljpris — dela öre-axel — serie 9
-      { seriesName:'Nordpool (öre)', show:false },
+    xaxis:{type:'datetime',min:xMin,max:xMax,labels:{datetimeFormatter:{hour:'HH:mm'},style:{colors:'#64748b'}},axisBorder:{color:'#1e2330'},axisTicks:{color:'#1e2330'}},
+    yaxis:[
+      {seriesName:'Ladda (sol)',min:0,decimalsInFloat:0,labels:{style:{colors:'#64748b'},formatter:function(v){return v==null?'':Math.round(v)+' W';}}},
+      {seriesName:'Ladda (sol)',show:false},{seriesName:'Ladda (sol)',show:false},{seriesName:'Ladda (sol)',show:false},
+      {seriesName:'Ladda (sol)',show:false},{seriesName:'Ladda (sol)',show:false},
+      {opposite:true,seriesName:'Batteri SOC',min:0,max:100,decimalsInFloat:0,labels:{style:{colors:'#38bdf8'},formatter:function(v){return v==null?'':Math.round(v)+' %';}}},
+      {seriesName:'Ladda (sol)',show:false},
+      {opposite:true,seriesName:'Nordpool (ore)',min:0,max:300,decimalsInFloat:0,labels:{style:{colors:'#fcd34d'},formatter:function(v){return v==null?'':Math.round(v)+' ore';}}},
+      {seriesName:'Nordpool (ore)',show:false},
     ],
-    tooltip: {
-      shared:true, intersect:false,
-      x:{ format:'HH:mm' },
-      y:{ formatter:(v, {seriesIndex}) => {
-        if (v==null || v===0) return null;
-        if (seriesIndex===6) return v.toFixed(1)+' %';
-        if (seriesIndex>=8)  return Math.round(v)+' öre/kWh';
-        return Math.round(v)+' W';
-      }},
-    },
-    annotations: {
-      xaxis:[{ x:now, borderColor:'#ef4444', borderWidth:2,
-        label:{ text:'NU', style:{ color:'#fff', background:'#ef4444', fontFamily:"'DM Sans',sans-serif", fontSize:'11px' }}}],
-    },
-    legend:{ show:true, position:'bottom', labels:{ colors:'#94a3b8' }, markers:{ radius:4 }},
-    grid:{ borderColor:'#1e2330', strokeDashArray:3 },
+    tooltip:{shared:true,intersect:false,x:{format:'HH:mm'},y:{formatter:function(v,ctx){
+      if(v==null||v===0) return null;
+      if(ctx.seriesIndex===6) return v.toFixed(1)+' %';
+      if(ctx.seriesIndex>=8) return Math.round(v)+' ore/kWh';
+      return Math.round(v)+' W';
+    }}},
+    annotations:{xaxis:[{x:now,borderColor:'#ef4444',borderWidth:2,label:{text:'NU',style:{color:'#fff',background:'#ef4444',fontFamily:"'DM Sans',sans-serif",fontSize:'11px'}}}]},
+    legend:{show:true,position:'bottom',labels:{colors:'#94a3b8'},markers:{radius:4}},
+    grid:{borderColor:'#1e2330',strokeDashArray:3},
   };
-
-  if (chart) { chart.destroy(); chart = null; }
-  chart = new ApexCharts(document.getElementById('chart'), opts);
+  if(chart){chart.destroy();chart=null;}
+  chart=new ApexCharts(document.getElementById('chart'),opts);
   chart.render();
 }
 
-// ── Load data ────────────────────────────────────────────────
-async function loadData() {
-  document.getElementById('chart-loading').style.display = 'block';
-  document.getElementById('chart-error').style.display   = 'none';
-  document.getElementById('chart').style.display         = 'none';
+function updateEconUI(tableRows){
+  var now=Date.now();
+  var midnight=new Date();midnight.setHours(0,0,0,0);
+  var midT=midnight.getTime();
+  var soFar=0,forecast=0,hasFc=false;
+  tableRows.forEach(function(r){
+    if(r.t<midT||r.isHistory) return;
+    hasFc=true;
+    if(r.t<=now) soFar+=r.econKr;
+    else forecast+=r.econKr;
+  });
+  var total=soFar+forecast;
+  function fmt(kr){return(kr>=0?'+':'')+Math.abs(kr).toFixed(2)+' kr';}
+  var sfEl=document.getElementById('econ-sf');
+  var sfCard=document.getElementById('econ-sf-card');
+  sfEl.textContent=hasFc?fmt(soFar):'-';
+  document.getElementById('econ-sf-sub').textContent=soFar>=0?'nettointakt hittills':'nettokostnad hittills';
+  sfCard.className='econ-card '+(soFar>=0?'econ-positive':'econ-negative');
+  var fcEl=document.getElementById('econ-fc');
+  var fcCard=document.getElementById('econ-fc-card');
+  fcEl.textContent=hasFc?fmt(forecast):'-';
+  document.getElementById('econ-fc-sub').textContent=forecast>=0?'beraknad intakt':'beraknad kostnad';
+  fcCard.className='econ-card '+(forecast>=0?'econ-positive':'econ-negative');
+  var totEl=document.getElementById('econ-tot');
+  var totCard=document.getElementById('econ-tot-card');
+  totEl.textContent=hasFc?fmt(total):'-';
+  document.getElementById('econ-tot-sub').textContent=total>=0?'beraknad nettointakt':'beraknad nettokostnad';
+  totCard.className='econ-card '+(total>=0?'econ-positive':'econ-negative');
+}
 
-  try {
-    // Fetch all sensors in parallel
-    const [pvS, loadS, battS, socS, gridS, buyS, sellS, nordS] = await Promise.all([
+async function loadData(){
+  document.getElementById('chart-loading').style.display='block';
+  document.getElementById('chart-error').style.display='none';
+  document.getElementById('chart').style.display='none';
+  try{
+    var results=await Promise.all([
       haFetch('/api/states/sensor.mpc_pv_power'),
       haFetch('/api/states/sensor.mpc_load_power'),
       haFetch('/api/states/sensor.mpc_batt_power'),
@@ -417,196 +299,134 @@ async function loadData() {
       haFetch('/api/states/sensor.mpc_grid_power'),
       haFetch('/api/states/sensor.mpc_general_price'),
       haFetch('/api/states/sensor.mpc_feed_in_price'),
-      NORDPOOL ? haFetch('/api/states/'+NORDPOOL).catch(()=>null) : null,
+      NORDPOOL?haFetch('/api/states/'+NORDPOOL).catch(function(){return null;}):Promise.resolve(null),
     ]);
-
-    // Extract forecasts indexed by timestamp
-    const pvFc   = extractFc(pvS);
-    const loadFc = extractFc(loadS);
-    const battFc = extractFc(battS);
-    const socFc  = extractFc(socS);
-    const gridFc = extractFc(gridS);
-    const buyFc  = extractFc(buyS);
-    const sellFc = extractFc(sellS);
-
-    const pvMap   = toMap(pvFc);
-    const loadMap = toMap(loadFc);
-    const battMap = toMap(battFc);
-    const socMap  = toMap(socFc);
-    const gridMap = toMap(gridFc);
-    const buyMap  = toMap(buyFc);
-    const sellMap = toMap(sellFc);
-
-    // Nordpool — combine raw_today + raw_tomorrow for 48h coverage
-    const nordBars = [];
-    const nordPriceMap = {}; // t → öre
-    if (nordS?.attributes) {
-      const rawToday    = nordS.attributes.raw_today    || [];
-      const rawTomorrow = nordS.attributes.raw_tomorrow || [];
-      [...rawToday, ...rawTomorrow].forEach(h => {
-        const t = new Date(h.start).getTime();
-        const ore = h.value; // Already in öre (price_in_cents: true)
-        nordBars.push([t, ore]);
-        nordPriceMap[Math.round(t/3600000)*3600000] = ore;
+    var pvS=results[0],loadS=results[1],battS=results[2],socS=results[3],gridS=results[4],buyS=results[5],sellS=results[6],nordS=results[7];
+    var pvFc=extractFc(pvS),loadFc=extractFc(loadS),battFc=extractFc(battS);
+    var socFc=extractFc(socS),gridFc=extractFc(gridS),buyFc=extractFc(buyS),sellFc=extractFc(sellS);
+    var pvMap=toMap(pvFc),loadMap=toMap(loadFc),battMap=toMap(battFc);
+    var socMap=toMap(socFc),gridMap=toMap(gridFc),buyMap=toMap(buyFc),sellMap=toMap(sellFc);
+    var nordBars=[],nordPriceMap={};
+    if(nordS&&nordS.attributes){
+      var rawAll=(nordS.attributes.raw_today||[]).concat(nordS.attributes.raw_tomorrow||[]);
+      rawAll.forEach(function(h){
+        var t=new Date(h.start).getTime();
+        var ore=h.value;
+        nordBars.push([t,ore]);
+        nordPriceMap[Math.round(t/900000)*900000]=ore;
       });
     }
-
-    // Price stats — prefer Nordpool raw data, fallback to buyFc
-    const nordOreAll = [...(nordS?.attributes?.raw_today||[]), ...(nordS?.attributes?.raw_tomorrow||[])]
-      .map(h => h.value).filter(v => v > 0); // Already in öre
-    const buyOreAll = buyFc.map(p => p.val * 100).filter(v => v > 0);
-    const priceArr = nordOreAll.length ? nordOreAll : buyOreAll;
-    const avgBuyOre = priceArr.length ? priceArr.reduce((a,b)=>a+b,0)/priceArr.length : 0;
-    document.getElementById('price-low').textContent  = priceArr.length ? Math.round(Math.min(...priceArr)) : '–';
-    document.getElementById('price-avg').textContent  = priceArr.length ? Math.round(avgBuyOre) : '–';
-    document.getElementById('price-high').textContent = priceArr.length ? Math.round(Math.max(...priceArr)) : '–';
-
-    // Master timeline — use loadFc (always has values, day+night)
-    const masterFc = loadFc.length ? loadFc :
-                     battFc.length ? battFc : pvFc;
-
-    const solarCharge=[], gridCharge=[], discharge=[], export_=[];
-    const pvLine=[], loadLine=[], socLine=[], gridLine=[], sellLine=[];
-    const tableRows=[];
-
-    masterFc.forEach(p => {
-      const t    = roundT(p.t);
-      const batt = battMap[t] ?? 0;
-      const pv   = pvMap[t]   ?? 0;
-      const load = loadMap[t] ?? p.val;
-      const grid = gridMap[t] ?? 0;
-      const buy  = buyMap[t]  ?? 0;
-      const sell = sellMap[t] ?? 0;
-      const soc  = socMap[t]  ?? 0;
-      const dec  = classify(batt, pv, grid, buy, sell, avgBuyOre / 100);
-
-      pvLine.push([t, pv]);
-      loadLine.push([t, load]);
-      socLine.push([t, soc]);
-      gridLine.push([t, grid]);
-      sellLine.push([t, sell * 100]);
-
-      // batt < 0 = laddning, batt > 0 = urladdning
-      solarCharge.push([t, dec.key==='solar_charge' ? Math.abs(batt) : 0]);
-      gridCharge.push( [t, dec.key==='grid_charge'  ? Math.abs(batt) : 0]);
-      discharge.push(  [t, batt > 50 ? batt : 0]);
-      export_.push(    [t, dec.key==='export'       ? Math.abs(grid) : 0]);
-
-      // Try Nordpool price for this hour if mpc_general_price is missing
-      // buy is in kr/kWh → *100 = öre; nordOre already in öre
-      const nordOre = nordPriceMap[Math.round(t/3600000)*3600000] || nordPriceMap[Math.round((t-1800000)/3600000)*3600000] || 0;
-      const displayBuyOre = buy > 0 ? Math.round(buy * 100) : nordOre;
-      tableRows.push({ t, buyOre: displayBuyOre, sellOre: Math.round(sell * 100), pv, load, batt, soc, grid, dec });
+    var todayOre=(nordS&&nordS.attributes&&nordS.attributes.raw_today||[]).map(function(h){return h.value;});
+    var avgOre=todayOre.length?todayOre.reduce(function(a,b){return a+b;},0)/todayOre.length:84;
+    avgOreGlobal=avgOre;
+    document.getElementById('price-low').textContent=todayOre.length?Math.round(Math.min.apply(null,todayOre)):'-';
+    document.getElementById('price-avg').textContent=todayOre.length?Math.round(avgOre):'-';
+    document.getElementById('price-high').textContent=todayOre.length?Math.round(Math.max.apply(null,todayOre)):'-';
+    var masterFc=[loadFc,battFc,pvFc].sort(function(a,b){return b.length-a.length;})[0];
+    var solarCharge=[],gridCharge=[],discharge=[],export_=[];
+    var pvLine=[],loadLine=[],socLine=[],gridLine=[],sellLine=[];
+    var tableRows=[];
+    var buyVals=buyFc.map(function(p){return p.val;}).filter(function(v){return v>0;});
+    var avgBuyKr=buyVals.length?buyVals.reduce(function(a,b){return a+b;},0)/buyVals.length:0.10;
+    masterFc.forEach(function(p){
+      var t=p.t;
+      var batt=battMap[t]!==undefined?battMap[t]:0;
+      var pv=pvMap[t]!==undefined?pvMap[t]:0;
+      var load=loadMap[t]!==undefined?loadMap[t]:p.val;
+      var grid=gridMap[t]!==undefined?gridMap[t]:0;
+      var buy=buyMap[t]!==undefined?buyMap[t]:0;
+      var sell=sellMap[t]!==undefined?sellMap[t]:0;
+      var soc=socMap[t]!==undefined?socMap[t]:0;
+      var dec=classify(batt,pv,grid,buy,sell,avgBuyKr);
+      var econKr=slotEconomy(batt,pv,load,grid,buy,sell);
+      pvLine.push([t,pv]);
+      loadLine.push([t,load]);
+      socLine.push([t,soc]);
+      gridLine.push([t,grid]);
+      sellLine.push([t,sell*100]);
+      solarCharge.push([t,dec.key==='solar_charge'?Math.abs(batt):0]);
+      gridCharge.push([t,dec.key==='grid_charge'?Math.abs(batt):0]);
+      discharge.push([t,batt>50?batt:0]);
+      export_.push([t,dec.key==='export'?Math.abs(grid):0]);
+      tableRows.push({t:t,buyOre:buy>0?Math.round(buy*100):(nordPriceMap[t]||0),sellOre:sell>0?Math.round(sell*100):0,pv:pv,load:load,batt:batt,soc:soc,grid:grid,dec:dec,econKr:econKr});
     });
-
-    // Fetch history for past 3h to add to table
-    const historyRows = [];
-    try {
-      const now3h = new Date(Date.now() - 3*3600000).toISOString();
-      const hist = await haFetch(
-        `/api/history/period/${now3h}?filter_entity_id=sensor.mpc_load_power,sensor.mpc_pv_power,sensor.mpc_batt_soc&minimal_response=true`
-      );
-      // hist = [[loadHistory], [pvHistory], [socHistory]]
-      const loadH = hist[0] || [];
-      const pvH   = hist[1] || [];
-      const socH  = hist[2] || [];
-      const pvHMap={}, socHMap={};
-      pvH.forEach(s  => { const t=new Date(s.last_changed||s.last_updated).getTime(); pvHMap[Math.round(t/900000)*900000]=parseFloat(s.state)||0; });
-      socH.forEach(s => { const t=new Date(s.last_changed||s.last_updated).getTime(); socHMap[Math.round(t/900000)*900000]=parseFloat(s.state)||0; });
-
-      // Group loadH by 15-min buckets
-      const buckets = {};
-      loadH.forEach(s => {
-        const t = new Date(s.last_changed||s.last_updated).getTime();
-        const bucket = Math.round(t/900000)*900000;
-        if (!buckets[bucket]) buckets[bucket] = [];
-        buckets[bucket].push(parseFloat(s.state)||0);
+    var historyRows=[];
+    try{
+      var now3h=new Date(Date.now()-3*3600000).toISOString();
+      var hist=await haFetch('/api/history/period/'+now3h+'?filter_entity_id=sensor.mpc_load_power,sensor.mpc_pv_power,sensor.mpc_batt_soc&minimal_response=true');
+      var loadH=hist[0]||[],pvH=hist[1]||[],socH=hist[2]||[];
+      var pvHMap={},socHMap={};
+      pvH.forEach(function(s){var t=Math.round(new Date(s.last_changed||s.last_updated).getTime()/900000)*900000;pvHMap[t]=parseFloat(s.state)||0;});
+      socH.forEach(function(s){var t=Math.round(new Date(s.last_changed||s.last_updated).getTime()/900000)*900000;socHMap[t]=parseFloat(s.state)||0;});
+      var buckets={};
+      loadH.forEach(function(s){var t=Math.round(new Date(s.last_changed||s.last_updated).getTime()/900000)*900000;if(!buckets[t])buckets[t]=[];buckets[t].push(parseFloat(s.state)||0);});
+      Object.keys(buckets).forEach(function(tStr){
+        var t=parseInt(tStr);
+        var vals=buckets[tStr];
+        var avg=vals.reduce(function(a,b){return a+b;},0)/vals.length;
+        pvLine.unshift([t,pvHMap[t]||0]);
+        loadLine.unshift([t,Math.round(avg)]);
+        socLine.unshift([t,socHMap[t]||0]);
+        historyRows.push({t:t,isHistory:true,load:Math.round(avg),pv:pvHMap[t]||0,soc:socHMap[t]||0,buyOre:nordPriceMap[t]||0,sellOre:0,batt:0,grid:0,econKr:0,dec:{key:'history',label:'-',color:'#64748b'}});
       });
-      Object.entries(buckets).forEach(([tStr, vals]) => {
-        const t = parseInt(tStr);
-        const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
-        historyRows.push({
-          t, isHistory: true,
-          load: Math.round(avg),
-          pv:   pvHMap[t]  || 0,
-          soc:  socHMap[t] || 0,
-          buyOre: 0, sellOre: 0, batt: 0, grid: 0,
-          dec: { key:'history', label:'–', color:'#64748b' }
-        });
-      });
-    } catch(e) {
-      // History fetch failed silently — not critical
-    }
-
-    // Add history into chart lines (prepend sorted history points)
-    historyRows.sort((a,b)=>a.t-b.t).forEach(r => {
-      pvLine.unshift([r.t, r.pv]);
-      loadLine.unshift([r.t, r.load]);
-      socLine.unshift([r.t, r.soc]);
-    });
-
-    allData = { solarCharge, gridCharge, discharge, export_, pvLine, loadLine, socLine, gridLine, nordBars, sellLine };
-
-    document.getElementById('chart-loading').style.display = 'none';
-    document.getElementById('chart').style.display = 'block';
-    renderChart(allData, currentSpanH);
-    renderTable(historyRows, tableRows);
-
-    document.getElementById('last-update').textContent =
-      'Uppdaterad ' + new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
-
-  } catch(e) {
-    document.getElementById('chart-loading').style.display = 'none';
-    const el = document.getElementById('chart-error');
-    el.style.display = 'block';
-    el.textContent = '⚠ Fel: ' + e.message + '. Kontrollera HA-URL och token.';
+    }catch(e){}
+    allData={solarCharge:solarCharge,gridCharge:gridCharge,discharge:discharge,export_:export_,pvLine:pvLine,loadLine:loadLine,socLine:socLine,gridLine:gridLine,nordBars:nordBars,sellLine:sellLine};
+    document.getElementById('chart-loading').style.display='none';
+    document.getElementById('chart').style.display='block';
+    renderChart(allData,currentSpanH);
+    renderTable(historyRows,tableRows,avgOre);
+    updateEconUI(tableRows);
+    document.getElementById('last-update').textContent='Uppdaterad '+new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    document.getElementById('chart-loading').style.display='none';
+    var el=document.getElementById('chart-error');
+    el.style.display='block';
+    el.textContent='Fel: '+e.message;
     console.error(e);
   }
 }
 
-// ── Render table ─────────────────────────────────────────────
-function renderTable(histRows, forecastRows) {
-  const now = Date.now();
-
-  // Combine history (past 3h) + forecast (next 24h), deduplicate by timestamp
-  const seenT = new Set();
-  const forecastFiltered = forecastRows
-    .filter(r => r.t >= now - 900000 && r.t <= now + 24*3600000)
-    .filter(r => { const keep = !seenT.has(r.t); seenT.add(r.t); return keep; });
-  
-  // For history rows, only add if no forecast row at same time
-  const histFiltered = histRows.filter(r => !seenT.has(r.t));
-  
-  const allRows = [...histFiltered, ...forecastFiltered].sort((a,b) => a.t - b.t);
-
-  const tbody = document.getElementById('decision-table');
-  tbody.innerHTML = allRows.map(r => {
-    const isPast   = r.t < now - 900000;
-    const isNow    = Math.abs(r.t - now) < 900000;
-    const time     = new Date(r.t).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
-    const rowClass = isPast ? 'is-past' : isNow ? 'is-now' : '';
-    const battDir  = r.batt < -50 ? '▲' : r.batt > 50 ? '▼' : '—';
-    const battColor= r.batt < -50 ? '#22c55e' : r.batt > 50 ? '#f87171' : '#64748b';
-    const buyColor = r.buyOre > 0 && r.buyOre > (forecastRows.reduce((s,p)=>s+p.buyOre,0)/forecastRows.length)*1.1
-      ? '#f87171' : r.buyOre > 0 && r.buyOre < (forecastRows.reduce((s,p)=>s+p.buyOre,0)/forecastRows.length)*0.9
-      ? '#22c55e' : '';
-
-    return `<tr class="${rowClass}">
-      <td class="mono">${time}${isPast?' ↩':isNow?' ◀':''}</td>
-      <td class="mono" style="color:${buyColor}">${r.buyOre>0?Math.round(r.buyOre):'–'}</td>
-      <td class="mono" style="color:#86efac">${r.sellOre>0?Math.round(r.sellOre):'–'}</td>
-      <td class="mono" style="color:#fbbf24">${Math.round(r.pv)||'0'}</td>
-      <td class="mono">${Math.round(r.load)||'–'}</td>
-      <td class="mono" style="color:${battColor};font-size:0.8rem">${Math.abs(r.batt)>50?battDir+' '+Math.abs(Math.round(r.batt))+' W':'–'}</td>
-      <td class="mono" style="color:#38bdf8">${r.soc>0?Math.round(r.soc)+' %':'–'}</td>
-      <td>${r.dec.key==='history'?'<span style="color:#64748b">historik</span>':`<span class="badge" style="background:${r.dec.color}22;color:${r.dec.color}"><span class="dot" style="background:${r.dec.color}"></span>${r.dec.label}</span>`}</td>
-    </tr>`;
+function renderTable(histRows,forecastRows,avgOre){
+  var now=Date.now();
+  var seenT=new Set();
+  var fFilt=forecastRows.filter(function(r){return r.t>=now-3*3600000&&r.t<=now+24*3600000;}).filter(function(r){var k=!seenT.has(r.t);seenT.add(r.t);return k;});
+  var hFilt=histRows.filter(function(r){return!seenT.has(r.t);});
+  var allRows=hFilt.concat(fFilt).sort(function(a,b){return a.t-b.t;});
+  var tbody=document.getElementById('decision-table');
+  tbody.innerHTML=allRows.map(function(r){
+    var isPast=r.t<now-900000;
+    var isNow=Math.abs(r.t-now)<900000;
+    var time=new Date(r.t).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+    var rowCls=isPast?'is-past':isNow?'is-now':'';
+    var battDir=r.batt<-50?'&#9650;':r.batt>50?'&#9660;':'&mdash;';
+    var battColor=r.batt<-50?'#22c55e':r.batt>50?'#f87171':'#64748b';
+    var buyColor=r.buyOre>avgOre*1.1?'#f87171':r.buyOre>0&&r.buyOre<avgOre*0.9?'#22c55e':'#e2e8f0';
+    var econCell='-';
+    if(!r.isHistory&&r.econKr!==0){
+      var col=r.econKr>=0?'#22c55e':'#f87171';
+      var sign=r.econKr>=0?'+':'';
+      econCell='<span style="color:'+col+'">'+sign+r.econKr.toFixed(2)+' kr</span>';
+    } else if(r.isHistory&&r.buyOre>0&&r.load>0){
+      var estKr=-(r.load/1000)*0.25*(r.buyOre/100);
+      econCell='<span style="color:#64748b">'+estKr.toFixed(2)+' kr</span>';
+    }
+    var decCell=r.dec.key==='history'?'<span style="color:#64748b;font-size:0.76rem">historik</span>':'<span class="badge" style="background:'+r.dec.color+'22;color:'+r.dec.color+'"><span class="dot" style="background:'+r.dec.color+'"></span>'+r.dec.label+'</span>';
+    return '<tr class="'+rowCls+'">'
+      +'<td class="mono">'+time+(isPast?' &#8617;':isNow?' &#9664;':'')+'</td>'
+      +'<td class="mono" style="color:'+buyColor+'">'+(r.buyOre>0?Math.round(r.buyOre):'-')+'</td>'
+      +'<td class="mono" style="color:#86efac">'+(r.sellOre>0?Math.round(r.sellOre):'-')+'</td>'
+      +'<td class="mono" style="color:#fbbf24">'+(Math.round(r.pv)||'0')+'</td>'
+      +'<td class="mono">'+(Math.round(r.load)||'-')+'</td>'
+      +'<td class="mono" style="color:'+battColor+';font-size:0.78rem">'+(Math.abs(r.batt)>50?battDir+' '+Math.abs(Math.round(r.batt))+' W':'-')+'</td>'
+      +'<td class="mono" style="color:#38bdf8">'+(r.soc>0?r.soc.toFixed(1)+' %':'-')+'</td>'
+      +'<td class="mono">'+econCell+'</td>'
+      +'<td>'+decCell+'</td>'
+      +'</tr>';
   }).join('');
 }
 
-// ── Auto refresh ─────────────────────────────────────────────
-setInterval(loadData, 15*60*1000);
-if (HA_URL && HA_TOKEN) loadData();
+setInterval(loadData,15*60*1000);
+if(HA_URL&&HA_TOKEN) loadData();
 </script>
 </body>
 </html>
