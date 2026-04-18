@@ -230,9 +230,18 @@ function extractFc(sensor) {
   const fc = sensor?.attributes?.forecasts || [];
   if (!fc.length) return [];
   const valKey = Object.keys(fc[0]).find(k => k !== 'date');
-  return fc.map(p => ({ t: new Date(p.date).getTime(), val: parseFloat(p[valKey]) || 0 }));
+  return fc.map(p => {
+    const t = new Date(p.date).getTime();
+    return { t: Math.round(t/900000)*900000, val: parseFloat(p[valKey]) || 0 };
+  });
 }
-function toMap(arr) { const m={}; arr.forEach(p => m[p.t]=p.val); return m; }
+function toMap(arr) {
+  const m={};
+  // Round to nearest 15-min bucket for robust matching
+  arr.forEach(p => { m[Math.round(p.t/900000)*900000] = p.val; });
+  return m;
+}
+function roundT(t) { return Math.round(t/900000)*900000; }
 
 // ── Decision logic ───────────────────────────────────────────
 function classify(batt, pv, grid, buy, sell, avgBuy) {
@@ -278,11 +287,11 @@ function renderChart(d, spanH) {
     dataLabels: { enabled: false },
     stroke: {
       curve: ['stepline','stepline','stepline','stepline','smooth','smooth','smooth','stepline','stepline','stepline'],
-      width: [0, 0, 0, 0, 2, 2, 2, 1.5, 1, 1],
+      width: [0, 0, 0, 0, 2, 2, 2, 1.5, 0, 1],
     },
     fill: {
-      type:    ['solid','solid','solid','solid','gradient','gradient','solid','solid','solid','solid'],
-      opacity: [0.85,   0.85,   0.85,   0.85,   0.2,       0.15,     1,      1,      0.9,    1],
+      type:    ['solid','solid','solid','solid','gradient','gradient','solid','solid','gradient','solid'],
+      opacity: [0.85,   0.85,   0.85,   0.85,   0.2,       0.15,     1,      1,      0.15,   1],
       gradient: { shadeIntensity:1, opacityFrom:0.4, opacityTo:0.0, stops:[0,100] },
     },
     plotOptions: { bar: { columnWidth:'85%', borderRadius:2 }},
@@ -295,7 +304,7 @@ function renderChart(d, spanH) {
       { name:'Förbrukning',   type:'area', data: d.loadLine,    color:'#f87171' },
       { name:'Batteri SOC',   type:'line', data: d.socLine,     color:'#38bdf8' },
       { name:'Näteffekt',     type:'line', data: d.gridLine,    color:'#94a3b8' },
-      { name:'Nordpool (öre)',type:'bar',  data: d.nordBars,    color:'#fcd34d' },
+      { name:'Nordpool (öre)',type:'area', data: d.nordBars,    color:'#fcd34d' },
       { name:'Säljpris',      type:'line', data: d.sellLine,    color:'#86efac' },
     ],
     xaxis: {
@@ -312,13 +321,15 @@ function renderChart(d, spanH) {
       { seriesName:'Ladda (sol)', show:false },
       { seriesName:'Ladda (sol)', show:false },
       { seriesName:'Ladda (sol)', show:false },
-      // SOC % (höger)
+      // SOC % (höger) — serie 6
       { opposite:true, seriesName:'Batteri SOC', min:0, max:100, decimalsInFloat:0,
         labels:{ style:{ colors:'#38bdf8' }, formatter: v => v==null?'':Math.round(v)+' %' }},
+      // Näteffekt — dölj, dela watt — serie 7
       { seriesName:'Ladda (sol)', show:false },
-      // Öre (höger, delar axel med SOC-sidan)
-      { opposite:true, seriesName:'Nordpool (öre)', min:0, decimalsInFloat:0,
+      // Öre (höger) — serie 8 — egen axel, max 500 öre
+      { opposite:true, seriesName:'Nordpool (öre)', min:0, max:500, decimalsInFloat:0,
         labels:{ style:{ colors:'#fcd34d' }, formatter: v => v==null?'':Math.round(v)+' öre' }},
+      // Säljpris — dela öre-axel — serie 9
       { seriesName:'Nordpool (öre)', show:false },
     ],
     tooltip: {
@@ -410,7 +421,7 @@ async function loadData() {
     const tableRows=[];
 
     masterFc.forEach(p => {
-      const t    = p.t;
+      const t    = roundT(p.t);
       const batt = battMap[t] ?? 0;
       const pv   = pvMap[t]   ?? 0;
       const load = loadMap[t] ?? p.val;
