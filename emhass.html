@@ -401,16 +401,20 @@ async function loadData() {
         const t = new Date(h.start).getTime();
         const ore = h.value * 100;
         nordBars.push([t, ore]);
-        nordPriceMap[t] = ore;
+        // Store with rounded-to-hour key for lookup
+        nordPriceMap[Math.round(t/3600000)*3600000] = ore;
       });
     }
 
-    // Price stats from buyFc (öre)
+    // Price stats — prefer Nordpool raw data, fallback to buyFc
+    const nordOreAll = [...(nordS?.attributes?.raw_today||[]), ...(nordS?.attributes?.raw_tomorrow||[])]
+      .map(h => h.value * 100).filter(v => v > 0);
     const buyOreAll = buyFc.map(p => p.val * 100).filter(v => v > 0);
-    const avgBuyOre = buyOreAll.length ? buyOreAll.reduce((a,b)=>a+b,0)/buyOreAll.length : 0;
-    document.getElementById('price-low').textContent  = buyOreAll.length ? Math.round(Math.min(...buyOreAll)) : '–';
-    document.getElementById('price-avg').textContent  = buyOreAll.length ? Math.round(avgBuyOre) : '–';
-    document.getElementById('price-high').textContent = buyOreAll.length ? Math.round(Math.max(...buyOreAll)) : '–';
+    const priceArr = nordOreAll.length ? nordOreAll : buyOreAll;
+    const avgBuyOre = priceArr.length ? priceArr.reduce((a,b)=>a+b,0)/priceArr.length : 0;
+    document.getElementById('price-low').textContent  = priceArr.length ? Math.round(Math.min(...priceArr)) : '–';
+    document.getElementById('price-avg').textContent  = priceArr.length ? Math.round(avgBuyOre) : '–';
+    document.getElementById('price-high').textContent = priceArr.length ? Math.round(Math.max(...priceArr)) : '–';
 
     // Master timeline — use loadFc (always has values, day+night)
     const masterFc = loadFc.length ? loadFc :
@@ -442,7 +446,10 @@ async function loadData() {
       discharge.push(  [t, batt > 50 ? batt : 0]);
       export_.push(    [t, dec.key==='export'       ? Math.abs(grid) : 0]);
 
-      tableRows.push({ t, buyOre: buy*100, sellOre: sell*100, pv, load, batt, soc, grid, dec });
+      // Try Nordpool price for this hour if mpc_general_price is missing
+      const nordOre = nordPriceMap[Math.round(t/3600000)*3600000] || nordPriceMap[Math.round((t-1800000)/3600000)*3600000] || 0;
+      const displayBuyOre = buy*100 > 0 ? buy*100 : nordOre;
+      tableRows.push({ t, buyOre: displayBuyOre, sellOre: sell*100, pv, load, batt, soc, grid, dec });
     });
 
     // Fetch history for past 3h to add to table
@@ -484,6 +491,13 @@ async function loadData() {
       // History fetch failed silently — not critical
     }
 
+    // Add history into chart lines (prepend sorted history points)
+    historyRows.sort((a,b)=>a.t-b.t).forEach(r => {
+      pvLine.unshift([r.t, r.pv]);
+      loadLine.unshift([r.t, r.load]);
+      socLine.unshift([r.t, r.soc]);
+    });
+
     allData = { solarCharge, gridCharge, discharge, export_, pvLine, loadLine, socLine, gridLine, nordBars, sellLine };
 
     document.getElementById('chart-loading').style.display = 'none';
@@ -507,11 +521,16 @@ async function loadData() {
 function renderTable(histRows, forecastRows) {
   const now = Date.now();
 
-  // Combine history (past 3h) + forecast (next 24h), sorted by time
-  const allRows = [
-    ...histRows,
-    ...forecastRows.filter(r => r.t >= now - 900000 && r.t <= now + 24*3600000)
-  ].sort((a,b) => a.t - b.t);
+  // Combine history (past 3h) + forecast (next 24h), deduplicate by timestamp
+  const seenT = new Set();
+  const forecastFiltered = forecastRows
+    .filter(r => r.t >= now - 900000 && r.t <= now + 24*3600000)
+    .filter(r => { const keep = !seenT.has(r.t); seenT.add(r.t); return keep; });
+  
+  // For history rows, only add if no forecast row at same time
+  const histFiltered = histRows.filter(r => !seenT.has(r.t));
+  
+  const allRows = [...histFiltered, ...forecastFiltered].sort((a,b) => a.t - b.t);
 
   const tbody = document.getElementById('decision-table');
   tbody.innerHTML = allRows.map(r => {
