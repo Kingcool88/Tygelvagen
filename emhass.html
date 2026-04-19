@@ -10,6 +10,46 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0f1117;--surface:#181c26;--surface2:#1e2330;--border:#2a2f3d;--text:#e2e8f0;--muted:#64748b;--green:#22c55e;--blue:#60a5fa;--orange:#fb923c;--yellow:#fbbf24;--red:#f87171;--cyan:#34d399;}
 html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;min-height:100vh}
+.top-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.top-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden}
+.top-card::before{content:'';position:absolute;inset:0;opacity:.04;border-radius:14px}
+.tc-price::before{background:linear-gradient(135deg,#fbbf24,#f59e0b)}
+.tc-solar::before{background:linear-gradient(135deg,#fbbf24,#84cc16)}
+.tc-decision::before{background:linear-gradient(135deg,#60a5fa,#8b5cf6)}
+.tc-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:4px}
+.tc-main{font-size:2rem;font-weight:700;font-family:'DM Mono',monospace;line-height:1.1}
+.tc-unit{font-size:.9rem;color:var(--muted);margin-left:3px;font-weight:400}
+.tc-sub{font-size:.75rem;color:var(--muted);margin-top:2px}
+.tc-detail{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:4px}
+.tc-price .tc-main{color:#fbbf24}
+.tc-solar .tc-main{color:#fbbf24}
+.tc-decision .tc-main{color:var(--text)}
+.tc-dec-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.8rem;font-weight:600}
+
+/* Power Flow */
+.pf-card{padding:18px 16px 20px}
+.pf-live{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--green)}
+.pf-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.pf-wrap{position:relative;height:280px;margin-top:8px}
+.pf-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.pf-node{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;width:80px;height:80px;border-radius:18px;border:2px solid transparent;cursor:default;transition:transform .2s}
+.pf-node:hover{transform:scale(1.05)}
+.pf-node-icon{font-size:1.4rem;line-height:1}
+.pf-node-val{font-size:.72rem;font-family:'DM Mono',monospace;font-weight:600;margin-bottom:2px}
+.pf-node-lbl{font-size:.65rem;color:rgba(255,255,255,.7);margin-top:2px}
+.pf-solar{background:linear-gradient(135deg,#92400e,#d97706);border-color:#fbbf2466;left:calc(50% - 40px);top:0}
+.pf-house{background:linear-gradient(135deg,#831843,#db2777);border-color:#f472b666;left:calc(50% - 40px);top:calc(50% - 40px)}
+.pf-batt{background:linear-gradient(135deg,#1e3a5f,#2563eb);border-color:#60a5fa66;left:calc(20% - 40px);top:calc(50% - 40px)}
+.pf-grid{background:linear-gradient(135deg,#1f2937,#4b5563);border-color:#6b728066;right:calc(20% - 40px);top:calc(50% - 40px)}
+.pf-ev{background:linear-gradient(135deg,#1a3a2a,#16a34a);border-color:#22c55e66;left:calc(20% - 40px);bottom:0}
+.pf-decision-label{position:absolute;bottom:0;left:50%;transform:translateX(-50%);padding:5px 14px;border-radius:20px;font-size:.78rem;font-weight:600;white-space:nowrap}
+@media(max-width:600px){
+  .top-cards{grid-template-columns:1fr}
+  .pf-wrap{height:320px}
+  .pf-batt{left:5%;top:calc(50% - 40px)}
+  .pf-grid{right:5%;top:calc(50% - 40px)}
+}
 #config-overlay{position:fixed;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
 #config-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;width:min(480px,92vw)}
 #config-box h2{font-size:1.25rem;font-weight:600;margin-bottom:8px}
@@ -64,7 +104,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-seri
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:0.82rem}
 thead tr{border-bottom:1px solid var(--border)}
-thead th{text-align:left;padding:8px 8px;font-size:0.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:500;white-space:nowrap}
+thead th{text-align:left;padding:8px 8px;font-size:0.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:500;white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:10}
 tbody tr{border-bottom:1px solid #ffffff08;transition:background .15s}
 tbody tr:hover{background:var(--surface2)}
 tbody tr.is-now{background:#60a5fa11;border-left:2px solid var(--blue)}
@@ -99,8 +139,92 @@ td.mono{font-family:'DM Mono',monospace}
       <button class="btn" onclick="loadData()">&#8634; Uppdatera</button>
       <button class="btn-icon" onclick="openSettings()">&#9881;</button>
     </div>
+  <!-- ── LIVE TOP CARDS ──────────────────────────────────── -->
+  <div class="top-cards">
+
+    <!-- Elpris nu -->
+    <div class="top-card tc-price">
+      <div class="tc-label">ELPRIS NU</div>
+      <div class="tc-main"><span id="tc-price-val">&#8211;</span><span class="tc-unit">&#246;re/kWh</span></div>
+      <div class="tc-sub" id="tc-price-rel"></div>
+      <canvas id="tc-sparkline" height="40" style="width:100%;margin:6px 0 4px;opacity:.7"></canvas>
+      <div class="tc-detail">
+        <span>&#9889; Spot: <span id="tc-spot">&#8211;</span> &#246;re</span>
+        <span>&#36; S&#228;lj: <span id="tc-sell-price">&#8211;</span> &#246;re</span>
+      </div>
+    </div>
+
+    <!-- Sol idag -->
+    <div class="top-card tc-solar">
+      <div class="tc-label">SOL IDAG</div>
+      <div style="font-size:2rem;margin:4px 0">&#9728;&#65039;</div>
+      <div class="tc-main"><span id="tc-solar-kwh">&#8211;</span><span class="tc-unit">kWh</span></div>
+      <div class="tc-sub" id="tc-solar-sub">producerat (prognos)</div>
+      <div class="tc-detail" style="margin-top:6px">
+        <span id="tc-solar-now">&#8211; W nu</span>
+        <span id="tc-solar-peak">Topp &#8211; W</span>
+      </div>
+    </div>
+
+    <!-- Beslut -->
+    <div class="top-card tc-decision">
+      <div class="tc-label">BESLUT NU</div>
+      <div style="margin:6px 0"><span id="tc-dec-badge" class="tc-dec-badge">&#8211;</span></div>
+      <div class="tc-main" style="font-size:1.6rem"><span id="tc-dec-power">&#8211;</span><span class="tc-unit">W</span></div>
+      <div class="tc-sub" id="tc-dec-sub"></div>
+      <div class="tc-detail" style="margin-top:6px">
+        <span>Batteri: <span id="tc-batt-soc-now">&#8211;</span></span>
+        <span id="tc-dec-detail2"></span>
+      </div>
+    </div>
+
   </div>
-  <!-- Price stats -->
+
+  <!-- ── POWER FLOW ─────────────────────────────────────────── -->
+  <div class="card pf-card">
+    <div class="card-header">
+      <span class="card-title">Power Flow</span>
+      <span class="pf-live"><span class="pf-dot"></span>Live</span>
+    </div>
+    <div class="pf-wrap">
+      <!-- Solar node -->
+      <div class="pf-node pf-solar" id="pf-solar">
+        <div class="pf-node-val" id="pf-solar-w">&#8211;</div>
+        <div class="pf-node-icon">&#9728;&#65039;</div>
+        <div class="pf-node-lbl">Sol</div>
+      </div>
+      <!-- House node -->
+      <div class="pf-node pf-house" id="pf-house">
+        <div class="pf-node-val" id="pf-house-w">&#8211;</div>
+        <div class="pf-node-icon">&#127968;</div>
+        <div class="pf-node-lbl">Hus</div>
+      </div>
+      <!-- Battery node -->
+      <div class="pf-node pf-batt" id="pf-batt">
+        <div class="pf-node-val" id="pf-batt-w">&#8211;</div>
+        <div class="pf-node-icon">&#128267;</div>
+        <div class="pf-node-lbl" id="pf-batt-soc">Batteri</div>
+      </div>
+      <!-- Grid node -->
+      <div class="pf-node pf-grid" id="pf-grid">
+        <div class="pf-node-val" id="pf-grid-w">&#8211;</div>
+        <div class="pf-node-icon">&#128268;</div>
+        <div class="pf-node-lbl">N&#228;t</div>
+      </div>
+      <!-- EV node -->
+      <div class="pf-node pf-ev" id="pf-ev" style="display:none">
+        <div class="pf-node-val" id="pf-ev-w">&#8211;</div>
+        <div class="pf-node-icon">&#128663;</div>
+        <div class="pf-node-lbl">Bil</div>
+      </div>
+      <!-- SVG flow lines -->
+      <svg id="pf-svg" class="pf-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <!-- Decision label -->
+      <div id="pf-decision-label" class="pf-decision-label"></div>
+    </div>
+  </div>
+
+    <!-- Price stats -->
   <div class="stat-row">
     <div class="stat-card stat-low"><div class="stat-label">L&#228;gsta idag</div><div><span class="stat-value" id="price-low">&#8211;</span><span class="stat-unit">&#246;re/kWh</span></div></div>
     <div class="stat-card"><div class="stat-label">Medel idag</div><div><span class="stat-value" id="price-avg">&#8211;</span><span class="stat-unit">&#246;re/kWh</span></div></div>
@@ -163,12 +287,15 @@ td.mono{font-family:'DM Mono',monospace}
         <div class="ev-row"><span class="ev-key">Aktuell laddeffekt</span><span class="ev-val" id="easee-power">&#8211;</span></div>
         <div class="ev-row"><span class="ev-key">Sessionsenergi</span><span class="ev-val" id="easee-session">&#8211;</span></div>
         <div class="ev-row"><span class="ev-key">Kabelstatus</span><span class="ev-val" id="easee-cable">&#8211;</span></div>
-        <div class="ev-row"><span class="ev-key">Tibber rutbel&#246;ning</span><span class="ev-val" id="tibber-reward">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Tibber Grid Rewards</span><span class="ev-val" id="tibber-reward">&#8211;</span></div>
         <div class="ev-row"><span class="ev-key">Avg&#229;ngstid imorgon</span><span class="ev-val" id="ev-departure">&#8211;</span></div>
       </div>
     </div>
     <div id="ev-plan-box" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:none">
-      <div class="ev-section-title" style="margin-bottom:8px">&#128338; Optimalt laddschema</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="ev-section-title">&#128338; Optimalt laddschema</div>
+        <button id="ev-charge-now-btn" onclick="startCharging()" style="display:none;padding:6px 14px;background:#22c55e;border:none;border-radius:8px;color:#fff;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">&#9889; Ladda nu</button>
+      </div>
       <div id="ev-plan-text" style="font-size:0.85rem;line-height:1.7"></div>
       <div id="ev-plan-slots" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
@@ -180,7 +307,7 @@ td.mono{font-family:'DM Mono',monospace}
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Tid</th><th>K&#246;p (&#246;re)</th><th>S&#228;lj (&#246;re)</th><th>Sol (W)</th><th>Last (W)</th><th>Batteri</th><th>SOC %</th><th>Kr/kvart</th><th>Beslut</th>
+          <th>Tid</th><th>K&#246;p (&#246;re)</th><th>S&#228;lj (&#246;re)</th><th>Sol (W)</th><th>Last (W)</th><th>Batteri</th><th>SOC %</th><th>Plan kr/kvart</th><th>Faktiskt kr</th><th>Beslut</th>
         </tr></thead>
         <tbody id="decision-table"></tbody>
       </table>
@@ -210,7 +337,7 @@ document.getElementById('config-save').addEventListener('click',function(){
   localStorage.setItem('ha_worker',WORKER_URL);localStorage.setItem('ha_nordpool',NORDPOOL);
   document.getElementById('config-overlay').style.display='none';
   document.getElementById('app').style.display='block';
-  loadData();
+  loadData();startLive();
 });
 function openSettings(){fillConfig();document.getElementById('config-overlay').style.display='flex';}
 if(HA_URL&&HA_TOKEN){document.getElementById('config-overlay').style.display='none';document.getElementById('app').style.display='block';}
@@ -340,6 +467,11 @@ function renderChart(d,spanH){
   if(chart){chart.destroy();chart=null;}
   chart=new ApexCharts(document.getElementById('chart'),opts);
   chart.render();
+  // Start Nu-line updater
+  if(window._nuTimer) clearInterval(window._nuTimer);
+  window._nuTimer=setInterval(function(){
+    if(chart) chart.updateOptions({annotations:{xaxis:[{x:Date.now(),borderColor:'#ef4444',borderWidth:2,label:{text:'NU',style:{color:'#fff',background:'#ef4444',fontFamily:"'DM Sans',sans-serif",fontSize:'11px'}}}]}},false,false);
+  },60000);
 }
 
 function updateEconUI(tableRows,avgOre){
@@ -347,8 +479,9 @@ function updateEconUI(tableRows,avgOre){
   var midnight=new Date();midnight.setHours(0,0,0,0);
   var midT=midnight.getTime();
   var soFar=0,forecast=0,hasFc=false;
+  var endOfDay=new Date(midT);endOfDay.setHours(23,59,59,999);var endT=endOfDay.getTime();
   tableRows.forEach(function(r){
-    if(r.t<midT||r.isHistory) return;
+    if(r.t<midT||r.t>endT||r.isHistory) return; // only today 00:00-23:59
     hasFc=true;
     if(r.t<=now) soFar+=r.econKr;
     else forecast+=r.econKr;
@@ -437,6 +570,11 @@ async function loadEVData(){
     }).catch(function(){document.getElementById('ev-departure').textContent='\u2013';});
 
     document.getElementById('ev-card').style.display='block';
+    // Show "Ladda nu" button if cable is connected and not already charging
+    var cableOk=easeeCable.state==='on';
+    var notCharging=easeeStatus.state!=='charging';
+    var btn=document.getElementById('ev-charge-now-btn');
+    if(btn) btn.style.display=(cableOk&&notCharging)?'block':'none';
   }catch(e){console.warn('EV-data misslyckades:',e.message);}
 }
 
@@ -450,9 +588,9 @@ function buildChargingPlan(currentSoc,targetSoc,capSensor,departureTime,easeePow
   if(capSensor&&!isNaN(parseFloat(capSensor.state))&&parseFloat(capSensor.state)>5) battCapKwh=parseFloat(capSensor.state);
 
   // Charging power: use Easee sensor if actively charging, else assume 7.4 kW (1-phase 16A or 3-phase)
-  var chargePowerKw=7.4;
+  var chargePowerKw=3.7; // Volvo XC90 PHEV max AC: 3.7 kW
   var ep=parseFloat(easeePower&&easeePower.state);
-  if(!isNaN(ep)&&ep>500) chargePowerKw=ep/1000;
+  if(!isNaN(ep)&&ep>200) chargePowerKw=ep/1000; // use actual if actively charging
 
   var socNeeded=Math.max(0,(targetSoc-currentSoc)/100);
   var energyNeededKwh=socNeeded*battCapKwh;
@@ -658,7 +796,9 @@ async function loadData(){
     document.getElementById('chart-loading').style.display='none';
     document.getElementById('chart').style.display='block';
     renderChart(allData,currentSpanH);
-    renderTable(historyRows,tableRows,avgOre);
+    // Fetch actual economy data for past 2h
+    var actualMap=await loadActualEconomy();
+    renderTable(historyRows,tableRows,avgOre,actualMap);
     updateEconUI(tableRows,avgOre);
 
     document.getElementById('last-update').textContent=
@@ -679,7 +819,8 @@ async function loadData(){
   }
 }
 
-function renderTable(histRows,forecastRows,avgOre){
+function renderTable(histRows,forecastRows,avgOre,actualMap){
+  actualMap=actualMap||{};
   var now=Date.now();
   var seenT=new Set();
   var fFilt=forecastRows
@@ -697,7 +838,17 @@ function renderTable(histRows,forecastRows,avgOre){
     var battDir=r.batt<-50?'&#9650;':r.batt>50?'&#9660;':'&mdash;';
     var battColor=r.batt<-50?'#22c55e':r.batt>50?'#f87171':'#64748b';
     var buyColor=r.buyOre>avgOre*1.1?'#f87171':r.buyOre>0&&r.buyOre<avgOre*0.9?'#22c55e':'#e2e8f0';
-    var econCell='\u2013';
+    var faktCell='–';
+    var faktVal=actualMap[r.t];
+    if(!r.isHistory&&faktVal!==undefined){
+      var fc2=r.t<now?faktVal:undefined; // only for past slots
+      if(fc2!==undefined){
+        var fc2Col=fc2>=0?'#22c55e':'#f87171';
+        var fc2Sign=fc2>=0?'+':'';
+        faktCell='<span style="color:'+fc2Col+'">'+fc2Sign+fc2.toFixed(2)+' kr</span>';
+      }
+    }
+    var econCell='–';
     if(r.econKr!==0){
       var col=r.econKr>=0?'#22c55e':'#f87171';
       var sign=r.econKr>=0?'+':'';
@@ -716,6 +867,7 @@ function renderTable(histRows,forecastRows,avgOre){
       +'<td class="mono" style="color:'+battColor+';font-size:0.78rem">'+battDisplay+'</td>'
       +'<td class="mono" style="color:#38bdf8">'+(r.soc>0?r.soc.toFixed(1)+' %':'\u2013')+'</td>'
       +'<td class="mono">'+econCell+'</td>'
+      +'<td class="mono">'+faktCell+'</td>'
       +'<td>'+decCell+'</td>'
       +'</tr>';
   }).join('');
@@ -806,8 +958,278 @@ function computeChargingWindow(tableRows, chartData) {
   }
 }
 
+// ── LIVE TOP SECTION ──────────────────────────────────────
+var liveTimer=null;
+
+async function loadLiveData(){
+  try{
+    var sensors=await Promise.all([
+      haFetch('/api/states/sensor.mpc_pv_power'),
+      haFetch('/api/states/sensor.mpc_load_power'),
+      haFetch('/api/states/sensor.mpc_batt_power'),
+      haFetch('/api/states/sensor.mpc_batt_soc'),
+      haFetch('/api/states/sensor.mpc_grid_power'),
+      haFetch('/api/states/sensor.mpc_general_price'),
+      haFetch('/api/states/sensor.mpc_feed_in_price'),
+      NORDPOOL?haFetch('/api/states/'+NORDPOOL).catch(function(){return null;}):Promise.resolve(null),
+      haFetch('/api/states/sensor.tygelvagen_40_power').catch(function(){return null;}),
+    ]);
+    var pvS=sensors[0],loadS=sensors[1],battS=sensors[2],socS=sensors[3];
+    var gridS=sensors[4],buyS=sensors[5],sellS=sensors[6],nordS=sensors[7],evPwrS=sensors[8];
+
+    var pvW=parseFloat(pvS.state)||0;
+    var loadW=parseFloat(loadS.state)||0;
+    var battW=parseFloat(battS.state)||0;  // neg=charge, pos=discharge
+    var socPct=parseFloat(socS.state)||0;
+    var gridW=parseFloat(gridS.state)||0;  // pos=import, neg=export
+    var buyKr=parseFloat(buyS.state)||0;
+    var sellKr=parseFloat(sellS.state)||0;
+    var buyOre=Math.round(buyKr*100);
+    var sellOre=Math.round(sellKr*100);
+    var evW=evPwrS?parseFloat(evPwrS.state)||0:0;
+
+    // ── Elpris-kort ──
+    var nordOre=nordS?parseFloat(nordS.attributes&&nordS.attributes.current_price||nordS.state)||buyOre:buyOre;
+    document.getElementById('tc-price-val').textContent=buyOre;
+    var todayOre=(nordS&&nordS.attributes&&nordS.attributes.raw_today||[]).map(function(h){return h.value;});
+    var avgO=todayOre.length?todayOre.reduce(function(a,b){return a+b;},0)/todayOre.length:buyOre;
+    var relPct=avgO>0?Math.round((buyOre-avgO)/avgO*100):0;
+    document.getElementById('tc-price-rel').textContent=relPct>0?'Nära snitt ↑'+relPct+'%':relPct<0?'Under snitt ↓'+Math.abs(relPct)+'%':'Exakt snitt';
+    document.getElementById('tc-price-rel').style.color=relPct>10?'#f87171':relPct<-10?'#22c55e':'#94a3b8';
+    document.getElementById('tc-spot').textContent=Math.round(nordOre);
+    document.getElementById('tc-sell-price').textContent=sellOre;
+    // Sparkline
+    drawSparkline(todayOre, buyOre, avgO);
+
+    // ── Sol-kort ──
+    var fcFc=pvS.attributes&&(pvS.attributes.forecasts||pvS.attributes.unit_load_cost_forecasts)||[];
+    var todayMidnight=new Date();todayMidnight.setHours(0,0,0,0);
+    var tomorrowMidnight=new Date(todayMidnight);tomorrowMidnight.setDate(tomorrowMidnight.getDate()+1);
+    // Sum today's pv forecast kWh
+    var pvToday=0,pvPeak=0;
+    var pvFcArr=pvS.attributes&&pvS.attributes.forecasts||[];
+    pvFcArr.forEach(function(p){
+      var t=new Date(p.date).getTime();
+      var v=parseFloat(p.mpc_pv_power)||0;
+      if(t>=todayMidnight.getTime()&&t<tomorrowMidnight.getTime()){
+        pvToday+=v*0.25/1000; // kWh per slot
+        if(v>pvPeak) pvPeak=v;
+      }
+    });
+    document.getElementById('tc-solar-kwh').textContent=pvToday.toFixed(1);
+    document.getElementById('tc-solar-now').textContent=Math.round(pvW)+' W nu';
+    document.getElementById('tc-solar-peak').textContent='Topp '+Math.round(pvPeak)+' W';
+
+    // ── Beslut-kort ──
+    var battCapped=Math.max(-10000,Math.min(10000,battW));
+    var dec=classify(battCapped,pvW,gridW,buyKr,sellKr,buyKr);
+    var badge=document.getElementById('tc-dec-badge');
+    badge.textContent=dec.label;
+    badge.style.background=dec.color+'33';
+    badge.style.color=dec.color;
+    badge.style.border='1px solid '+dec.color+'66';
+    // Main power = most significant flow
+    var mainW=Math.abs(battCapped)>50?Math.abs(battCapped):Math.abs(gridW)>50?Math.abs(gridW):pvW;
+    document.getElementById('tc-dec-power').textContent=Math.round(mainW);
+    document.getElementById('tc-batt-soc-now').textContent=socPct.toFixed(1)+'%';
+    document.getElementById('tc-dec-sub').textContent=
+      battCapped<-50?'Laddar batteri '+Math.abs(Math.round(battCapped))+' W':
+      battCapped>50?'Urladdar batteri '+Math.round(battCapped)+' W':
+      gridW>50?'Köper '+Math.round(gridW)+' W från nät':
+      gridW<-50?'Säljer '+Math.abs(Math.round(gridW))+' W till nät':
+      'Självförsörjande';
+    document.getElementById('tc-dec-detail2').textContent=
+      gridW<-50?'Inkomst: +'+(Math.abs(gridW)/1000*0.25*sellKr).toFixed(2)+' kr/kvart':
+      gridW>50?'Kostnad: -'+(gridW/1000*0.25*buyKr).toFixed(2)+' kr/kvart':'';
+
+    // ── Power Flow ──
+    drawPowerFlow(pvW,loadW,battCapped,gridW,socPct,evW,dec);
+
+  }catch(e){console.warn('Live data error:',e);}
+}
+
+function drawSparkline(todayOre,currentOre,avgOre){
+  var canvas=document.getElementById('tc-sparkline');
+  if(!canvas||!canvas.getContext||!todayOre.length) return;
+  var ctx=canvas.getContext('2d');
+  var w=canvas.offsetWidth||200, h=40;
+  canvas.width=w; canvas.height=h;
+  ctx.clearRect(0,0,w,h);
+  var min=Math.min.apply(null,todayOre), max=Math.max.apply(null,todayOre);
+  var range=max-min||1;
+  var pts=todayOre.map(function(v,i){return{x:i/(todayOre.length-1)*w,y:h-(v-min)/range*(h-4)-2};});
+  // Gradient fill
+  var grad=ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,'rgba(251,191,36,.3)');grad.addColorStop(1,'rgba(251,191,36,0)');
+  ctx.beginPath();ctx.moveTo(pts[0].x,h);
+  pts.forEach(function(p){ctx.lineTo(p.x,p.y);});
+  ctx.lineTo(pts[pts.length-1].x,h);ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+  // Line
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  pts.forEach(function(p){ctx.lineTo(p.x,p.y);});
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=1.5;ctx.stroke();
+  // Current dot
+  var hour=new Date().getHours();
+  var idx=Math.min(hour,todayOre.length-1);
+  if(idx>=0&&idx<pts.length){
+    ctx.beginPath();ctx.arc(pts[idx].x,pts[idx].y,3.5,0,Math.PI*2);
+    ctx.fillStyle='#fbbf24';ctx.fill();
+  }
+}
+
+function drawPowerFlow(pvW,loadW,battW,gridW,socPct,evW,dec){
+  // Update node values
+  document.getElementById('pf-solar-w').textContent=pvW>0?Math.round(pvW)+' W':'0 W';
+  document.getElementById('pf-house-w').textContent=Math.round(loadW)+' W';
+  var battDir=battW<-50?'▲ ':battW>50?'▼ ':'';
+  document.getElementById('pf-batt-w').textContent=battDir+Math.abs(Math.round(battW))+' W';
+  document.getElementById('pf-batt-soc').textContent='Batteri '+socPct.toFixed(0)+'%';
+  var gridDir=gridW>50?'▼ Köp ':gridW<-50?'▲ Sälj ':'';
+  document.getElementById('pf-grid-w').textContent=gridDir+Math.abs(Math.round(gridW))+' W';
+  if(evW>50){
+    document.getElementById('pf-ev').style.display='flex';
+    document.getElementById('pf-ev-w').textContent=Math.round(evW)+' W';
+  }
+
+  // Battery node color by SOC
+  var pfBatt=document.getElementById('pf-batt');
+  var battColor=socPct>60?'#1e40af,#2563eb':socPct>30?'#92400e,#d97706':'#7f1d1d,#dc2626';
+  pfBatt.style.background='linear-gradient(135deg,'+battColor+')';
+
+  // Decision label
+  var dl=document.getElementById('pf-decision-label');
+  dl.textContent='● '+dec.label+(Math.abs(battW)>50?' '+Math.abs(Math.round(battW))+' W':'');
+  dl.style.background=dec.color+'33';
+  dl.style.color=dec.color;
+  dl.style.border='1px solid '+dec.color+'55';
+
+  // Draw SVG flow lines
+  drawFlowLines(pvW,loadW,battW,gridW,evW);
+}
+
+function drawFlowLines(pvW,loadW,battW,gridW,evW){
+  var svg=document.getElementById('pf-svg');
+  if(!svg) return;
+  var wrap=svg.parentElement;
+  var W=wrap.offsetWidth||400, H=wrap.offsetHeight||280;
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+
+  // Node centers (must match CSS positions)
+  var cx=W/2, cy=H/2;
+  var solar={x:cx,    y:40};
+  var house={x:cx,    y:cy};
+  var batt= {x:W*0.20,y:cy};
+  var grid= {x:W*0.80,y:cy};
+  var ev=   {x:W*0.20,y:H-40};
+
+  function flowLine(x1,y1,x2,y2,color,power,animated){
+    if(Math.abs(power)<10) return '';
+    var thick=Math.min(6,Math.max(1.5,Math.abs(power)/1000*3));
+    var dashClass=animated?'pf-flow-anim':'';
+    var id='fl'+Math.random().toString(36).slice(2,6);
+    var dash=animated?'stroke-dasharray="8 6" stroke-dashoffset="0"':'';
+    var anim=animated?'<animate attributeName="stroke-dashoffset" from="0" to="-28" dur="1.2s" repeatCount="indefinite"/>':'';
+    return '<path id="'+id+'" d="M'+x1+','+y1+' Q'+((x1+x2)/2)+','+((y1+y2)/2)+' '+x2+','+y2+'"'
+      +' fill="none" stroke="'+color+'" stroke-width="'+thick+'" stroke-linecap="round"'
+      +' '+dash+' opacity="0.85">'+anim+'</path>';
+  }
+
+  var lines='';
+  // Solar → House
+  if(pvW>50) lines+=flowLine(solar.x,solar.y+40,house.x,house.y-40,'#fbbf24',pvW,true);
+  // Grid → House (importing)
+  if(gridW>50) lines+=flowLine(grid.x-40,grid.y,house.x+40,house.y,'#f87171',gridW,true);
+  // House → Grid (exporting)
+  if(gridW<-50) lines+=flowLine(house.x+40,house.y,grid.x-40,grid.y,'#22c55e',Math.abs(gridW),true);
+  // Batt → House (discharging)
+  if(battW>50) lines+=flowLine(batt.x+40,batt.y,house.x-40,house.y,'#60a5fa',battW,true);
+  // House → Batt (charging from load side) / Solar → Batt
+  if(battW<-50) lines+=flowLine(solar.x-20,solar.y+40,batt.x+20,batt.y-40,'#22c55e',Math.abs(battW),true);
+  // EV charging
+  if(evW>50) lines+=flowLine(batt.x,batt.y+40,ev.x,ev.y-40,'#4ade80',evW,true);
+
+  svg.innerHTML=lines;
+}
+
+// Start live updates every 30s
+function startLive(){
+  loadLiveData();
+  if(liveTimer) clearInterval(liveTimer);
+  liveTimer=setInterval(loadLiveData,30000);
+}
+
+// Start charging via Easee HA service
+async function startCharging(){
+  var btn=document.getElementById('ev-charge-now-btn');
+  if(btn) btn.textContent='Skickar...';
+  try{
+    // 1. Enable charger
+    var headers=WORKER_URL
+      ?{'X-HA-URL':HA_URL,'X-HA-Token':HA_TOKEN,'Content-Type':'application/json'}
+      :{'Authorization':'Bearer '+HA_TOKEN,'Content-Type':'application/json'};
+    await fetch((WORKER_URL||HA_URL)+'/api/services/switch/turn_on',{
+      method:'POST',headers:headers,
+      body:JSON.stringify({entity_id:'switch.tygelvagen_40_charger_enabled'})
+    });
+    // 2. Override schedule (press the override button)
+    await fetch((WORKER_URL||HA_URL)+'/api/services/button/press',{
+      method:'POST',headers:headers,
+      body:JSON.stringify({entity_id:'button.tygelvagen_40_override_schedule'})
+    });
+    if(btn){btn.textContent='&#10003; Schema åsidosätts & laddning startad!';btn.style.background='#15803d';}
+    setTimeout(function(){if(btn){btn.textContent='&#9889; Ladda nu';btn.style.background='#22c55e';}},4000);
+  }catch(e){
+    if(btn){btn.textContent='Fel: '+e.message;btn.style.background='#ef4444';}
+    setTimeout(function(){if(btn){btn.textContent='&#9889; Ladda nu';btn.style.background='#22c55e';}},4000);
+  }
+}
+
+// Fetch actual grid transactions for past 2h from HA history
+async function loadActualEconomy(){
+  try{
+    var since=new Date(Date.now()-3*3600000).toISOString();
+    var hist=await haFetch('/api/history/period/'+since
+      +'?filter_entity_id=sensor.mpc_grid_power,sensor.mpc_general_price,sensor.mpc_feed_in_price&minimal_response=true');
+    var gridH=hist[0]||[],buyH=hist[1]||[],sellH=hist[2]||[];
+    
+    // Build maps by 15-min bucket
+    var gridMap={},buyMap={},sellMap={};
+    function bucket(s){
+      var vals=[];
+      s.forEach(function(e){
+        var t=Math.round(new Date(e.last_changed||e.last_updated).getTime()/900000)*900000;
+        if(!gridMap[t+'_arr']) gridMap[t+'_arr']=[];
+        gridMap[t+'_arr'].push(parseFloat(e.state)||0);
+      });
+    }
+    var gridBuckets={},buyBuckets={},sellBuckets={};
+    gridH.forEach(function(e){var t=Math.round(new Date(e.last_changed||e.last_updated).getTime()/900000)*900000;if(!gridBuckets[t])gridBuckets[t]=[];gridBuckets[t].push(parseFloat(e.state)||0);});
+    buyH.forEach(function(e){var t=Math.round(new Date(e.last_changed||e.last_updated).getTime()/900000)*900000;if(!buyBuckets[t])buyBuckets[t]=[];buyBuckets[t].push(parseFloat(e.state)||0);});
+    sellH.forEach(function(e){var t=Math.round(new Date(e.last_changed||e.last_updated).getTime()/900000)*900000;if(!sellBuckets[t])sellBuckets[t]=[];sellBuckets[t].push(parseFloat(e.state)||0);});
+    
+    var actualMap={};
+    Object.keys(gridBuckets).forEach(function(t){
+      var g=gridBuckets[t].reduce(function(a,b){return a+b;},0)/gridBuckets[t].length;
+      var buy=buyBuckets[t]?buyBuckets[t].reduce(function(a,b){return a+b;},0)/buyBuckets[t].length:0;
+      var sell=sellBuckets[t]?sellBuckets[t].reduce(function(a,b){return a+b;},0)/sellBuckets[t].length:0;
+      // Cap grid outliers
+      g=Math.max(-8000,Math.min(8000,g));
+      var gridImport=Math.max(0,g);
+      var gridExport=Math.max(0,-g);
+      var cost=(gridImport/1000)*0.25*buy;
+      var income=(gridExport/1000)*0.25*sell;
+      actualMap[parseInt(t)]=income-cost;
+    });
+    return actualMap;
+  }catch(e){
+    console.warn('Actual economy fetch failed:',e);
+    return {};
+  }
+}
+
 setInterval(loadData,15*60*1000);
-if(HA_URL&&HA_TOKEN) loadData();
+if(HA_URL&&HA_TOKEN){loadData();startLive();}
 </script>
 </body>
 </html>
