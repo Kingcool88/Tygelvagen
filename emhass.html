@@ -241,21 +241,32 @@ function classify(batt,pv,grid,buyKr,sellKr,avgBuyKr){
   return{key:'observe',label:'Observera',color:'#64748b'};
 }
 
-// Economy per 15-min slot
-// Includes: grid transactions + value of self-consumed solar (avoided cost)
-// Caps outlier batt values to 15kW to filter EMHASS bugs
+// Economy per 15-min slot - verified formula
+// Uses mpc_grid_power directly:
+//   positive grid = importing (buying from grid)
+//   negative grid = exporting (selling to grid)
+// Caps grid at 8kW to filter EMHASS outlier spikes
 function slotEconomy(batt,pv,load,grid,buyKr,sellKr){
   var h=0.25;
-  // Cap outlier battery values (EMHASS sometimes produces bogus spikes)
-  var gridCapped=Math.max(-15000,Math.min(15000,grid));
-  var gridBuyW=Math.max(0,gridCapped);
-  var gridSellW=Math.max(0,-gridCapped);
-  var costKr=(gridBuyW/1000)*h*buyKr;
-  var incomeKr=(gridSellW/1000)*h*sellKr;
-  // Value of self-consumed solar: energy from PV that avoids buying from grid
-  var selfConsumedW=Math.max(0,Math.min(pv,load));
-  var savedKr=(selfConsumedW/1000)*h*buyKr;
-  return incomeKr+savedKr-costKr; // positive = net benefit
+  // Cap grid outliers (realistic Swedish home: max ~8kW grid connection)
+  var g=Math.max(-8000,Math.min(8000,grid));
+  // Grid accounting
+  var gridImport=Math.max(0,g);
+  var gridExport=Math.max(0,-g);
+  var gridIncome=(gridExport/1000)*h*sellKr;
+  var gridCost=(gridImport/1000)*h*buyKr;
+  var gridNet=gridIncome-gridCost;
+  // Solar savings: value of load covered without importing from grid
+  var solarSavings;
+  if(g<=0){
+    // Exporting or balanced: all load is covered by solar+battery
+    solarSavings=(load/1000)*h*buyKr;
+  } else {
+    // Importing: partial solar coverage - count what load was NOT from grid
+    var localCoverage=Math.max(0,load-gridImport);
+    solarSavings=(localCoverage/1000)*h*buyKr;
+  }
+  return gridNet+solarSavings;
 }
 
 var chart=null,currentSpanH=12,allData=null;
@@ -478,9 +489,8 @@ async function loadData(){
       var batt=battMap[t]!==undefined?battMap[t]:0;
       var pv=pvMap[t]!==undefined?pvMap[t]:0;
       var load=loadMap[t]!==undefined?loadMap[t]:p.val;
-      // Cap grid outliers (EMHASS bug with 12000W spikes)
-      var gridRaw=gridMap[t]!==undefined?gridMap[t]:0;
-      var grid=Math.max(-15000,Math.min(15000,gridRaw));
+      // Use mpc_grid_power directly; slotEconomy caps internally
+      var grid=gridMap[t]!==undefined?gridMap[t]:0;
       var buy=buyMap[t]!==undefined?buyMap[t]:0;
       var sell=sellMap[t]!==undefined?sellMap[t]:0;
       var soc=socMap[t]!==undefined?socMap[t]:0;
@@ -495,7 +505,7 @@ async function loadData(){
       solarCharge.push([t,dec.key==='solar_charge'?Math.abs(batt):0]);
       gridCharge.push([t,dec.key==='grid_charge'?Math.abs(batt):0]);
       // Cap discharge display too
-      discharge.push([t,batt>50&&batt<15000?batt:0]);
+      discharge.push([t,batt>50&&batt<10000?batt:0]);
       export_.push([t,dec.key==='export'?Math.abs(grid):0]);
 
       tableRows.push({
@@ -585,7 +595,7 @@ function renderTable(histRows,forecastRows,avgOre){
       var sign=r.econKr>=0?'+':'';
       econCell='<span style="color:'+col+'">'+sign+r.econKr.toFixed(2)+' kr</span>';
     }
-    var battDisplay=Math.abs(r.batt)>50&&Math.abs(r.batt)<15000?battDir+' '+Math.abs(Math.round(r.batt))+' W':'\u2013';
+    var battDisplay=Math.abs(r.batt)>50&&Math.abs(r.batt)<10000?battDir+' '+Math.abs(Math.round(r.batt))+' W':'\u2013';
     var decCell=r.dec.key==='history'
       ?'<span style="color:#64748b;font-size:0.76rem">historik</span>'
       :'<span class="badge" style="background:'+r.dec.color+'22;color:'+r.dec.color+'"><span class="dot" style="background:'+r.dec.color+'"></span>'+r.dec.label+'</span>';
