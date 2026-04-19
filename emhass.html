@@ -142,34 +142,38 @@ td.mono{font-family:'DM Mono',monospace}
   <!-- EV card -->
   <div class="card" id="ev-card" style="display:none">
     <div class="card-header"><span class="card-title">&#128663; Volvo XC90 &amp; Laddbox</span></div>
-    <div class="card-sub">Realtidsstatus f&#246;r bil och Easee laddbox</div>
+    <div class="card-sub">Realtidsstatus f&#246;r bil och Easee laddbox &middot; uppdateras vid varje sidinl&#228;sning</div>
     <div class="ev-grid">
-      <!-- Car -->
       <div>
         <div class="ev-section-title">Volvo XC90</div>
         <div class="soc-bar-wrap">
           <div class="soc-bar-bg"><div class="soc-bar-fill" id="ev-soc-bar" style="width:0%;background:var(--green)"></div></div>
-          <div class="soc-label"><span>Batteri</span><span id="ev-soc-pct">&#8211;</span></div>
+          <div class="soc-label"><span>Batteriniv&#229;</span><span id="ev-soc-pct">&#8211;</span></div>
         </div>
         <div class="ev-row"><span class="ev-key">Laddstatus</span><span class="ev-val" id="ev-charge-status">&#8211;</span></div>
         <div class="ev-row"><span class="ev-key">Laddeffekt</span><span class="ev-val" id="ev-charge-power">&#8211;</span></div>
         <div class="ev-row"><span class="ev-key">R&#228;ckvidd (el)</span><span class="ev-val" id="ev-range">&#8211;</span></div>
-        <div class="ev-row"><span class="ev-key">M&#229;l-SOC</span><span class="ev-val" id="ev-target-soc">&#8211;</span></div>
-        <div class="ev-row"><span class="ev-key">Anslutning</span><span class="ev-val" id="ev-connection">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">M&#229;l-laddniv&#229;</span><span class="ev-val" id="ev-target-soc">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Anslutningsstatus</span><span class="ev-val" id="ev-connection">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Uppskattad laddtid</span><span class="ev-val" id="ev-est-time">&#8211;</span></div>
       </div>
-      <!-- Charger -->
       <div>
         <div class="ev-section-title">Easee Laddbox</div>
         <div class="ev-row"><span class="ev-key">Status</span><span class="ev-val" id="easee-status">&#8211;</span></div>
-        <div class="ev-row"><span class="ev-key">Laddeffekt</span><span class="ev-val" id="easee-power">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Aktuell laddeffekt</span><span class="ev-val" id="easee-power">&#8211;</span></div>
         <div class="ev-row"><span class="ev-key">Sessionsenergi</span><span class="ev-val" id="easee-session">&#8211;</span></div>
-        <div class="ev-row"><span class="ev-key">Kabel</span><span class="ev-val" id="easee-cable">&#8211;</span></div>
-        <div class="ev-row"><span class="ev-key">Tibber Grid Reward</span><span class="ev-val" id="tibber-reward">&#8211;</span></div>
-        <div class="ev-row"><span class="ev-key">Avg&#229;ngstid idag</span><span class="ev-val" id="ev-departure">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Kabelstatus</span><span class="ev-val" id="easee-cable">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Tibber rutbel&#246;ning</span><span class="ev-val" id="tibber-reward">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Avg&#229;ngstid imorgon</span><span class="ev-val" id="ev-departure">&#8211;</span></div>
       </div>
     </div>
+    <div id="ev-plan-box" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:none">
+      <div class="ev-section-title" style="margin-bottom:8px">&#128338; Optimalt laddschema</div>
+      <div id="ev-plan-text" style="font-size:0.85rem;line-height:1.7"></div>
+      <div id="ev-plan-slots" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
   </div>
-  <!-- Decision table -->
+    <!-- Decision table -->
   <div class="card">
     <div class="card-header"><span class="card-title">&#128336; Beslutstabell</span></div>
     <div class="card-sub">Historik och plan fram&#229;t &middot; kostnader och int&#228;kter per kvart (inkl. v&#228;rde av egenanv&#228;nd sol)</div>
@@ -288,9 +292,9 @@ function renderChart(d,spanH){
     theme:{mode:'dark'},
     dataLabels:{enabled:false},
     stroke:{curve:['stepline','stepline','stepline','stepline','smooth','smooth','smooth','stepline','stepline','stepline'],
-            width:[0,0,0,0,2,2,2,1.5,0,1]},
-    fill:{type:['solid','solid','solid','solid','gradient','gradient','solid','solid','gradient','solid'],
-          opacity:[0.85,0.85,0.85,0.85,0.2,0.15,1,1,0.18,1],
+            width:[0,0,0,0,2,2,2,1.5,2.5,1.5],dashArray:[0,0,0,0,0,0,0,0,0,6]},
+    fill:{type:['solid','solid','solid','solid','gradient','gradient','solid','solid','solid','solid'],
+          opacity:[0.85,0.85,0.85,0.85,0.2,0.15,1,1,1,1],
           gradient:{shadeIntensity:1,opacityFrom:0.4,opacityTo:0.0,stops:[0,100]}},
     plotOptions:{bar:{columnWidth:'85%',borderRadius:2}},
     series:[
@@ -302,8 +306,8 @@ function renderChart(d,spanH){
       {name:'F\u00f6rbrukning',type:'area',data:d.loadLine,color:'#f87171'},
       {name:'Batteri SOC',type:'line',data:d.socLine,color:'#38bdf8'},
       {name:'N\u00e4teffekt',type:'line',data:d.gridLine,color:'#94a3b8'},
-      {name:'Nordpool (\u00f6re)',type:'area',data:d.nordBars,color:'#fcd34d'},
-      {name:'S\u00e4ljpris',type:'line',data:d.sellLine,color:'#86efac'},
+      {name:'Elpris (\u00f6re)',type:'line',data:d.nordBars,color:'#fcd34d'},
+      {name:'S\u00e4ljpris (\u00f6re)',type:'line',data:d.sellLine,color:'#86efac'},
     ],
     xaxis:{type:'datetime',min:xMin,max:xMax,
       labels:{datetimeFormatter:{hour:'HH:mm'},style:{colors:'#64748b'}},
@@ -317,15 +321,15 @@ function renderChart(d,spanH){
       {opposite:true,seriesName:'Batteri SOC',min:0,max:100,decimalsInFloat:0,
         labels:{style:{colors:'#38bdf8'},formatter:function(v){return v==null?'':Math.round(v)+' %';}}},
       {seriesName:'Ladda (sol)',show:false},
-      {opposite:true,seriesName:'Nordpool (\u00f6re)',min:0,max:300,decimalsInFloat:0,
+      {opposite:true,seriesName:'Elpris (\u00f6re)',min:0,max:300,decimalsInFloat:0,
         labels:{style:{colors:'#fcd34d'},formatter:function(v){return v==null?'':Math.round(v)+' \u00f6re';}}},
-      {seriesName:'Nordpool (\u00f6re)',show:false},
+      {seriesName:'Elpris (\u00f6re)',show:false},
     ],
     tooltip:{shared:true,intersect:false,x:{format:'HH:mm'},
       y:{formatter:function(v,ctx){
         if(v==null||v===0) return null;
         if(ctx.seriesIndex===6) return v.toFixed(1)+' %';
-        if(ctx.seriesIndex>=8) return Math.round(v)+' \u00f6re/kWh';
+        if(ctx.seriesIndex===8||ctx.seriesIndex===9) return Math.round(v)+' \u00f6re/kWh';
         return Math.round(v)+' W';
       }}},
     annotations:{xaxis:[{x:now,borderColor:'#ef4444',borderWidth:2,
@@ -368,7 +372,7 @@ function updateEconUI(tableRows,avgOre){
   document.getElementById('econ-tot-card').className='econ-card '+(total>=0?'econ-positive':'econ-negative');
 }
 
-// Load EV data
+// Load EV data + charging plan (all Swedish)
 async function loadEVData(){
   try{
     var evSensors=await Promise.all([
@@ -384,13 +388,14 @@ async function loadEVData(){
       haFetch('/api/states/binary_sensor.tygelvagen_40_cable_lock'),
       haFetch('/api/states/sensor.tibber_grid_reward_grid_reward_state'),
       haFetch('/api/states/sensor.xc90_state_of_charge').catch(function(){return null;}),
+      haFetch('/api/states/sensor.volvo_xc90_battery_capacity').catch(function(){return null;}),
     ]);
     var volvoBatt=evSensors[0],volvoStatus=evSensors[1],volvoPower=evSensors[2];
     var volvoRange=evSensors[3],volvoTarget=evSensors[4],volvoConn=evSensors[5];
     var easeeStatus=evSensors[6],easeePower=evSensors[7],easeeSession=evSensors[8];
     var easeeCable=evSensors[9],tibberReward=evSensors[10],tibberSOC=evSensors[11];
+    var volvoCap=evSensors[12];
 
-    // SOC — prefer Tibber (more reliable) then Volvo
     var soc=tibberSOC?parseFloat(tibberSOC.state):parseFloat(volvoBatt.state);
     if(isNaN(soc)) soc=0;
     document.getElementById('ev-soc-pct').textContent=soc.toFixed(0)+' %';
@@ -398,39 +403,139 @@ async function loadEVData(){
     socBar.style.width=soc+'%';
     socBar.style.background=soc>60?'#22c55e':soc>30?'#fbbf24':'#f87171';
 
-    var statusMap={'CHARGING':'Laddar','CONNECTED_WITH_LOAD':'Laddklar (laddar)','CONNECTED_WITHOUT_LOAD':'Ansluten (laddar ej)','DISCONNECTED':'Ej ansluten','DISCONNECTED_WITH_LOAD':'Ej ansluten','FULLY_CHARGED':'Fulladdat','UNKNOWN':'Ok\u00e4nd'};
-    document.getElementById('ev-charge-status').textContent=statusMap[volvoStatus.state]||volvoStatus.state;
+    var chargeSv={'CHARGING':'Laddar','CONNECTED_WITH_LOAD':'Ansluten (laddar)','CONNECTED_WITHOUT_LOAD':'Ansluten (laddar ej)','DISCONNECTED':'Ej ansluten','DISCONNECTED_WITH_LOAD':'Ej ansluten','FULLY_CHARGED':'Fulladdat','UNKNOWN':'Ok\u00e4nd','charging':'Laddar','no_charging_issue':'Inget laddproblem'};
+    document.getElementById('ev-charge-status').textContent=chargeSv[volvoStatus.state]||volvoStatus.state;
     var pw=parseFloat(volvoPower.state);
     document.getElementById('ev-charge-power').textContent=isNaN(pw)||pw===0?'\u2013':pw.toFixed(1)+' kW';
     var rng=parseFloat(volvoRange.state);
     document.getElementById('ev-range').textContent=isNaN(rng)?'\u2013':Math.round(rng)+' km';
-    document.getElementById('ev-target-soc').textContent=volvoTarget.state+' %';
-    document.getElementById('ev-connection').textContent=volvoConn.state||'\u2013';
+    var targetSoc=parseFloat(volvoTarget.state)||80;
+    document.getElementById('ev-target-soc').textContent=targetSoc.toFixed(0)+' %';
+    var connSv={'CONNECTED':'Ansluten','DISCONNECTED':'Ej ansluten','connected':'Ansluten','disconnected':'Ej ansluten'};
+    document.getElementById('ev-connection').textContent=connSv[volvoConn.state]||volvoConn.state||'\u2013';
 
-    // Easee
-    var easeeMap={'disconnected':'Ej ansluten','awaiting_start':'V\u00e4ntar','charging':'Laddar','ready_to_charge':'Laddklar','completed':'Klar','error':'Fel'};
-    document.getElementById('easee-status').textContent=easeeMap[easeeStatus.state]||easeeStatus.state;
+    var easeeSv={'disconnected':'Ej ansluten','awaiting_start':'V\u00e4ntar p\u00e5 start','charging':'Laddar','ready_to_charge':'Redo att ladda','completed':'Klar','error':'Fel','offline':'Offline','standby':'Standby'};
+    document.getElementById('easee-status').textContent=easeeSv[easeeStatus.state]||easeeStatus.state;
     var ep=parseFloat(easeePower.state);
     document.getElementById('easee-power').textContent=isNaN(ep)||ep===0?'\u2013':ep.toFixed(0)+' W';
     var es=parseFloat(easeeSession.state);
     document.getElementById('easee-session').textContent=isNaN(es)?'\u2013':es.toFixed(2)+' kWh';
     document.getElementById('easee-cable').textContent=easeeCable.state==='on'?'L\u00e5st':'Ol\u00e5st';
 
-    // Tibber reward
-    var rewardMap={'REWARDING':'Belönar nu','IDLE':'Inaktiv','UNKNOWN':'Ok\u00e4nd'};
-    document.getElementById('tibber-reward').textContent=rewardMap[tibberReward.state]||tibberReward.state;
+    var rewardSv={'REWARDING':'Bel\u00f6nar nu \u2713','IDLE':'Inaktiv','UNKNOWN':'Ok\u00e4nd','active':'Aktiv'};
+    document.getElementById('tibber-reward').textContent=rewardSv[tibberReward.state]||tibberReward.state;
 
-    // Today's departure time
-    var day=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date().getDay()];
-    haFetch('/api/states/time.xc90_departure_time_'+day).then(function(dep){
-      document.getElementById('ev-departure').textContent=dep.state||'\u2013';
+    // Departure = TOMORROW's weekday
+    var tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+    var dayEn=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    var daySv={'monday':'m\u00e5ndag','tuesday':'tisdag','wednesday':'onsdag','thursday':'torsdag','friday':'fredag','saturday':'l\u00f6rdag','sunday':'s\u00f6ndag'};
+    var tDay=dayEn[tomorrow.getDay()];
+    haFetch('/api/states/time.xc90_departure_time_'+tDay).then(function(dep){
+      var t=dep.state||'07:00';
+      document.getElementById('ev-departure').textContent=t+' ('+daySv[tDay]+')';
+      buildChargingPlan(soc,targetSoc,volvoCap,t,easeePower);
     }).catch(function(){document.getElementById('ev-departure').textContent='\u2013';});
 
     document.getElementById('ev-card').style.display='block';
-  }catch(e){
-    // EV data load failed silently — sensors might not exist
-    console.warn('EV data load failed:', e.message);
+  }catch(e){console.warn('EV-data misslyckades:',e.message);}
+}
+
+function buildChargingPlan(currentSoc,targetSoc,capSensor,departureTime,easeePower){
+  var planBox=document.getElementById('ev-plan-box');
+  var planText=document.getElementById('ev-plan-text');
+  var planSlots=document.getElementById('ev-plan-slots');
+
+  // XC90 PHEV ~ 18.8 kWh usable battery
+  var battCapKwh=18.8;
+  if(capSensor&&!isNaN(parseFloat(capSensor.state))&&parseFloat(capSensor.state)>5) battCapKwh=parseFloat(capSensor.state);
+
+  // Charging power: use Easee sensor if actively charging, else assume 7.4 kW (1-phase 16A or 3-phase)
+  var chargePowerKw=7.4;
+  var ep=parseFloat(easeePower&&easeePower.state);
+  if(!isNaN(ep)&&ep>500) chargePowerKw=ep/1000;
+
+  var socNeeded=Math.max(0,(targetSoc-currentSoc)/100);
+  var energyNeededKwh=socNeeded*battCapKwh;
+  var hoursNeeded=energyNeededKwh/chargePowerKw;
+  var slotsNeeded=Math.ceil(hoursNeeded/0.25);
+
+  var h=Math.floor(hoursNeeded);
+  var m=Math.round((hoursNeeded-h)*60);
+  document.getElementById('ev-est-time').textContent=
+    hoursNeeded<=0?'Redan fulladdat ('+targetSoc.toFixed(0)+'%)':
+    h+'h '+m+'min ('+energyNeededKwh.toFixed(1)+' kWh beh\u00f6vs)';
+
+  // Departure tomorrow
+  var depParts=(departureTime||'07:00').split(':');
+  var depH=parseInt(depParts[0])||7, depM=parseInt(depParts[1])||0;
+  var dep=new Date();dep.setDate(dep.getDate()+1);dep.setHours(depH,depM,0,0);
+  var depMs=dep.getTime();
+
+  if(hoursNeeded<=0){
+    planText.innerHTML='Bilen \u00e4r redan laddad till m\u00e5lniv\u00e5n (<strong>'+targetSoc.toFixed(0)+'%</strong>).';
+    planBox.style.display='block';return;
   }
+  if(!allData||!allData.nordBars||!allData.nordBars.length){
+    planText.innerHTML='Saknar elprisdata &ndash; kan inte optimera schema.';
+    planBox.style.display='block';return;
+  }
+
+  var now=Date.now();
+  var nordMap={};
+  allData.nordBars.forEach(function(p){nordMap[Math.round(p[0]/900000)*900000]=p[1];});
+
+  var slotStart=Math.ceil(now/900000)*900000;
+  var available=[];
+  for(var ts=slotStart;ts<depMs;ts+=900000){
+    var ore=nordMap[ts]||nordMap[Math.round(ts/3600000)*3600000]||avgOreGlobal;
+    available.push({t:ts,ore:ore});
+  }
+
+  if(available.length<slotsNeeded){
+    planText.innerHTML='<span style="color:#f87171">\u26a0 Otillr\u00e4cklig tid!</span> Bilen hinner troligtvis inte laddas klart till avresetiden.<br>'
+      +'Beh\u00f6ver ca '+slotsNeeded+' kvartar ('+hoursNeeded.toFixed(1)+'h) men bara '+available.length+' kvartar finns kvar.';
+    planBox.style.display='block';return;
+  }
+
+  // Choose cheapest slots
+  var sorted=available.slice().sort(function(a,b){return a.ore-b.ore;});
+  var chosen=new Set(sorted.slice(0,slotsNeeded).map(function(s){return s.t;}));
+  var chosenOre=sorted.slice(0,slotsNeeded).map(function(s){return s.ore;});
+  var minOre=Math.round(Math.min.apply(null,chosenOre));
+  var maxOre=Math.round(Math.max.apply(null,chosenOre));
+  var totalCost=chosenOre.reduce(function(s,o){return s+o/100*0.25*chargePowerKw;},0);
+  var depStr=('0'+depH).slice(-2)+':'+('0'+depM).slice(-2);
+
+  // Find first and last chosen slot for summary
+  var chosenArr=Array.from(chosen).sort(function(a,b){return a-b;});
+  var firstSlot=new Date(chosenArr[0]).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+  var lastSlot=new Date(chosenArr[chosenArr.length-1]+900000).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+
+  planText.innerHTML=
+    'Laddning: <strong>'+energyNeededKwh.toFixed(1)+' kWh</strong> ('
+    +currentSoc.toFixed(0)+'% \u2192 '+targetSoc.toFixed(0)+'%) p\u00e5 <strong>'
+    +hoursNeeded.toFixed(1)+'h</strong> &middot; Avg\u00e5ng: <strong>'+depStr+'</strong> imorgon<br>'
+    +'Optimala laddtider: <span style="color:#22c55e">'+firstSlot+'&ndash;'+lastSlot+'</span> '
+    +'(billigaste '+slotsNeeded+' kvartar, '+minOre+'&ndash;'+maxOre+' \u00f6re/kWh)<br>'
+    +'Beraknad laddkostnad: <strong>'+totalCost.toFixed(2)+' kr</strong> '
+    +'vid <strong>'+chargePowerKw.toFixed(1)+' kW</strong> laddeffekt';
+
+  // Render slot timeline
+  planSlots.innerHTML='';
+  available.forEach(function(slot){
+    var isChosen=chosen.has(slot.t);
+    var time=new Date(slot.t).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+    var el=document.createElement('span');
+    el.title=Math.round(slot.ore)+' \u00f6re/kWh';
+    el.style.cssText='display:inline-block;padding:3px 7px;border-radius:5px;font-size:0.72rem;'
+      +'font-family:"DM Mono",monospace;cursor:default;'
+      +(isChosen
+        ?'background:#22c55e22;border:1px solid #22c55e;color:#22c55e;font-weight:600;'
+        :'background:var(--surface2);border:1px solid var(--border);color:var(--muted);');
+    el.textContent=time+(isChosen?' \u26a1':'');
+    planSlots.appendChild(el);
+  });
+  planBox.style.display='block';
 }
 
 async function loadData(){
@@ -560,7 +665,10 @@ async function loadData(){
       'Uppdaterad '+new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
 
     // Load EV data in parallel (non-blocking)
-    loadEVData();
+    loadEVData().then(function(){
+      // After EV data loaded, compute charging window and annotate chart
+      computeChargingWindow(tableRows, allData);
+    });
 
   }catch(e){
     document.getElementById('chart-loading').style.display='none';
@@ -611,6 +719,91 @@ function renderTable(histRows,forecastRows,avgOre){
       +'<td>'+decCell+'</td>'
       +'</tr>';
   }).join('');
+}
+
+// ── Beräkna optimalt laddningsfönster för elbilen ────────────
+// XC90 PHEV har ~18.8 kWh batteri, max ~3.7 kW AC-laddning
+var EV_BATTERY_KWH = 18.8; // kWh (Volvo XC90 PHEV)
+var EV_CHARGER_KW  = 3.7;  // kW (Easee, standard AC)
+
+function computeChargingWindow(tableRows, chartData) {
+  // Get current SOC and target
+  var socEl  = document.getElementById('ev-soc-pct');
+  var targEl = document.getElementById('ev-target-soc');
+  var depEl  = document.getElementById('ev-departure');
+
+  var socPct  = parseFloat(socEl&&socEl.textContent)||0;
+  var targPct = parseFloat(targEl&&targEl.textContent)||100;
+  var depTime = depEl&&depEl.textContent!=='–'?depEl.textContent:null;
+
+  if(!socPct||!depTime) {
+    document.getElementById('ev-charge-from').textContent = 'Bil ej ansluten';
+    return;
+  }
+
+  // Calculate energy needed
+  var neededKwh = Math.max(0, (targPct - socPct) / 100 * EV_BATTERY_KWH);
+  var neededHours = neededKwh / EV_CHARGER_KW;
+  var neededSlots = Math.ceil(neededHours * 4); // 15-min slots
+
+  if(neededKwh < 0.5) {
+    document.getElementById('ev-charge-from').textContent = 'Redan fulladdat';
+    document.getElementById('ev-charge-to').textContent = '–';
+    document.getElementById('ev-charge-duration').textContent = '–';
+    return;
+  }
+
+  document.getElementById('ev-charge-duration').textContent =
+    Math.round(neededHours*60) + ' min (' + neededKwh.toFixed(1) + ' kWh)';
+
+  // Find departure timestamp (tomorrow if time has already passed)
+  var now = new Date();
+  var dep = new Date();
+  var parts = depTime.split(':');
+  dep.setHours(parseInt(parts[0]), parseInt(parts[1]||0), 0, 0);
+  if(dep <= now) dep.setDate(dep.getDate()+1);
+  var depTs = dep.getTime();
+
+  // Get all slots between now and departure with price
+  var slots = tableRows.filter(function(r){
+    return r.t > Date.now() && r.t <= depTs && r.buyOre > 0;
+  }).sort(function(a,b){return a.buyOre-b.buyOre;}); // cheapest first
+
+  if(slots.length < neededSlots) {
+    document.getElementById('ev-charge-from').textContent = 'Otillräckligt med tid';
+    return;
+  }
+
+  // Pick the cheapest consecutive-ish slots
+  var cheapSlots = slots.slice(0, neededSlots).map(function(s){return s.t;}).sort(function(a,b){return a-b;});
+  var fromTs = cheapSlots[0];
+  var toTs   = cheapSlots[cheapSlots.length-1] + 900000;
+
+  var fmtTime = function(ts){
+    var d = new Date(ts);
+    return d.toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+  };
+
+  document.getElementById('ev-charge-from').textContent = fmtTime(fromTs);
+  document.getElementById('ev-charge-to').textContent   = fmtTime(toTs);
+
+  // Show price range of cheap hours
+  var minOre = Math.round(Math.min.apply(null, slots.slice(0,neededSlots).map(function(s){return s.buyOre;})));
+  var maxOre = Math.round(Math.max.apply(null, slots.slice(0,neededSlots).map(function(s){return s.buyOre;})));
+  document.getElementById('ev-cheap-hours').textContent = minOre + '–' + maxOre + ' öre/kWh';
+
+  // Add annotation to chart if chart exists
+  if(chart && fromTs && toTs) {
+    chart.addXaxisAnnotation({
+      x: fromTs, x2: toTs,
+      fillColor: '#60a5fa',
+      opacity: 0.12,
+      label: {
+        text: 'Ladda bilen',
+        style: { color: '#fff', background: '#60a5fa', fontFamily:"'DM Sans',sans-serif", fontSize:'11px' }
+      }
+    });
+  }
 }
 
 setInterval(loadData,15*60*1000);
