@@ -11,12 +11,12 @@
 :root{--bg:#0f1117;--surface:#181c26;--surface2:#1e2330;--border:#2a2f3d;--text:#e2e8f0;--muted:#64748b;--green:#22c55e;--blue:#60a5fa;--orange:#fb923c;--yellow:#fbbf24;--red:#f87171;--cyan:#34d399;}
 html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;min-height:100vh}
 #config-overlay{position:fixed;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
-#config-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;width:min(480px,92vw);box-shadow:0 24px 64px #0008}
+#config-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;width:min(480px,92vw)}
 #config-box h2{font-size:1.25rem;font-weight:600;margin-bottom:8px}
 #config-box p{color:var(--muted);font-size:0.875rem;margin-bottom:20px;line-height:1.6}
 .field{margin-bottom:14px}
 .field label{display:block;font-size:0.75rem;color:var(--muted);margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase}
-.field input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.875rem;outline:none;transition:border-color .2s}
+.field input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.875rem;outline:none}
 .field input:focus{border-color:var(--blue)}
 .field small{display:block;font-size:0.72rem;color:var(--muted);margin-top:4px}
 #config-save{width:100%;padding:12px;background:var(--blue);border:none;border-radius:8px;color:#fff;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;margin-top:8px}
@@ -49,6 +49,18 @@ html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-seri
 .span-btns{display:flex;gap:6px}
 .span-btn{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 12px;color:var(--muted);font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif}
 .span-btn.active,.span-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--blue)}
+/* EV card */
+.ev-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.ev-section-title{font-size:0.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;font-weight:600}
+.ev-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #ffffff06}
+.ev-key{font-size:0.82rem;color:var(--muted)}
+.ev-val{font-size:0.85rem;font-weight:500;font-family:'DM Mono',monospace}
+.ev-status-badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:20px;font-size:0.76rem;font-family:'DM Sans',sans-serif}
+.soc-bar-wrap{margin:10px 0 4px}
+.soc-bar-bg{background:#1e2330;border-radius:6px;height:8px;overflow:hidden}
+.soc-bar-fill{height:100%;border-radius:6px;transition:width .5s ease}
+.soc-label{display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted);margin-top:4px}
+/* Table */
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:0.82rem}
 thead tr{border-bottom:1px solid var(--border)}
@@ -74,7 +86,7 @@ td.mono{font-family:'DM Mono',monospace}
     <p>Anslut till din Home Assistant via Nabu Casa eller lokal IP.</p>
     <div class="field"><label>HA URL</label><input id="cfg-url" type="text" placeholder="https://DITT-ID.ui.nabu.casa" spellcheck="false"></div>
     <div class="field"><label>Long-Lived Access Token</label><input id="cfg-token" type="password" placeholder="eyJ..."></div>
-    <div class="field"><label>Cloudflare Worker URL</label><input id="cfg-worker" type="text" placeholder="https://ha-proxy.DITTNAMN.workers.dev" spellcheck="false"><small>Kravs utanfor hemmanatverket.</small></div>
+    <div class="field"><label>Cloudflare Worker URL</label><input id="cfg-worker" type="text" placeholder="https://ha-proxy.DITTNAMN.workers.dev" spellcheck="false"><small>Kr&#228;vs utanf&#246;r hemman&#228;tverket.</small></div>
     <div class="field"><label>Nordpool sensor</label><input id="cfg-nordpool" type="text" placeholder="sensor.nordpool_kwh_se4_sek_3_10_025" spellcheck="false"></div>
     <button id="config-save">Spara och anslut</button>
   </div>
@@ -83,21 +95,36 @@ td.mono{font-family:'DM Mono',monospace}
   <div class="page-header">
     <div class="page-title"><span>&#9889;</span><h1>Elpris &amp; Schema</h1></div>
     <div class="status-row">
-      <span class="last-update" id="last-update">-</span>
+      <span class="last-update" id="last-update">&#8211;</span>
       <button class="btn" onclick="loadData()">&#8634; Uppdatera</button>
       <button class="btn-icon" onclick="openSettings()">&#9881;</button>
     </div>
   </div>
+  <!-- Price stats -->
   <div class="stat-row">
-    <div class="stat-card stat-low"><div class="stat-label">Lagsta idag</div><div><span class="stat-value" id="price-low">-</span><span class="stat-unit">ore/kWh</span></div></div>
-    <div class="stat-card"><div class="stat-label">Medel idag</div><div><span class="stat-value" id="price-avg">-</span><span class="stat-unit">ore/kWh</span></div></div>
-    <div class="stat-card stat-high"><div class="stat-label">Hogsta idag</div><div><span class="stat-value" id="price-high">-</span><span class="stat-unit">ore/kWh</span></div></div>
+    <div class="stat-card stat-low"><div class="stat-label">L&#228;gsta idag</div><div><span class="stat-value" id="price-low">&#8211;</span><span class="stat-unit">&#246;re/kWh</span></div></div>
+    <div class="stat-card"><div class="stat-label">Medel idag</div><div><span class="stat-value" id="price-avg">&#8211;</span><span class="stat-unit">&#246;re/kWh</span></div></div>
+    <div class="stat-card stat-high"><div class="stat-label">H&#246;gsta idag</div><div><span class="stat-value" id="price-high">&#8211;</span><span class="stat-unit">&#246;re/kWh</span></div></div>
   </div>
+  <!-- Economy cards -->
   <div class="econ-row">
-    <div class="econ-card" id="econ-sf-card"><div class="econ-label">Hittills idag</div><div class="econ-value" id="econ-sf">-</div><div class="econ-sub" id="econ-sf-sub">beraknas</div></div>
-    <div class="econ-card" id="econ-fc-card"><div class="econ-label">Prognos resten av dagen</div><div class="econ-value" id="econ-fc">-</div><div class="econ-sub" id="econ-fc-sub">beraknas</div></div>
-    <div class="econ-card" id="econ-tot-card"><div class="econ-label">Totalt idag (prognos)</div><div class="econ-value" id="econ-tot">-</div><div class="econ-sub" id="econ-tot-sub">kostnad minus intakt</div></div>
+    <div class="econ-card" id="econ-sf-card">
+      <div class="econ-label">Hittills idag</div>
+      <div class="econ-value" id="econ-sf">&#8211;</div>
+      <div class="econ-sub" id="econ-sf-sub">inkl. v&#228;rde av egenanv&#228;nd sol</div>
+    </div>
+    <div class="econ-card" id="econ-fc-card">
+      <div class="econ-label">Prognos resten av dagen</div>
+      <div class="econ-value" id="econ-fc">&#8211;</div>
+      <div class="econ-sub" id="econ-fc-sub">ber&#228;knas</div>
+    </div>
+    <div class="econ-card" id="econ-tot-card">
+      <div class="econ-label">Totalt idag (prognos)</div>
+      <div class="econ-value" id="econ-tot">&#8211;</div>
+      <div class="econ-sub" id="econ-tot-sub">nettokostnad eller intäkt</div>
+    </div>
   </div>
+  <!-- Chart -->
   <div class="card">
     <div class="card-header">
       <span class="card-title">IDAG</span>
@@ -107,18 +134,49 @@ td.mono{font-family:'DM Mono',monospace}
         <button class="span-btn" onclick="setSpan(this,48)">48h</button>
       </div>
     </div>
-    <div class="card-sub">EMHASS-plan per kvart · 2h bak fran nu + framat · uppdateras var 15:e minut</div>
-    <div id="chart-loading" class="loading"><div class="spinner"></div>Hamtar data...</div>
+    <div class="card-sub">EMHASS-plan per kvart &middot; 2h bak fr&#229;n nu + fram&#229;t &middot; uppdateras var 15:e minut</div>
+    <div id="chart-loading" class="loading"><div class="spinner"></div>H&#228;mtar data&#8230;</div>
     <div id="chart-error" class="error-msg" style="display:none"></div>
     <div id="chart" style="display:none;min-height:320px"></div>
   </div>
+  <!-- EV card -->
+  <div class="card" id="ev-card" style="display:none">
+    <div class="card-header"><span class="card-title">&#128663; Volvo XC90 &amp; Laddbox</span></div>
+    <div class="card-sub">Realtidsstatus f&#246;r bil och Easee laddbox</div>
+    <div class="ev-grid">
+      <!-- Car -->
+      <div>
+        <div class="ev-section-title">Volvo XC90</div>
+        <div class="soc-bar-wrap">
+          <div class="soc-bar-bg"><div class="soc-bar-fill" id="ev-soc-bar" style="width:0%;background:var(--green)"></div></div>
+          <div class="soc-label"><span>Batteri</span><span id="ev-soc-pct">&#8211;</span></div>
+        </div>
+        <div class="ev-row"><span class="ev-key">Laddstatus</span><span class="ev-val" id="ev-charge-status">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Laddeffekt</span><span class="ev-val" id="ev-charge-power">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">R&#228;ckvidd (el)</span><span class="ev-val" id="ev-range">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">M&#229;l-SOC</span><span class="ev-val" id="ev-target-soc">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Anslutning</span><span class="ev-val" id="ev-connection">&#8211;</span></div>
+      </div>
+      <!-- Charger -->
+      <div>
+        <div class="ev-section-title">Easee Laddbox</div>
+        <div class="ev-row"><span class="ev-key">Status</span><span class="ev-val" id="easee-status">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Laddeffekt</span><span class="ev-val" id="easee-power">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Sessionsenergi</span><span class="ev-val" id="easee-session">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Kabel</span><span class="ev-val" id="easee-cable">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Tibber Grid Reward</span><span class="ev-val" id="tibber-reward">&#8211;</span></div>
+        <div class="ev-row"><span class="ev-key">Avg&#229;ngstid idag</span><span class="ev-val" id="ev-departure">&#8211;</span></div>
+      </div>
+    </div>
+  </div>
+  <!-- Decision table -->
   <div class="card">
     <div class="card-header"><span class="card-title">&#128336; Beslutstabell</span></div>
-    <div class="card-sub">Historik och plan framat · kostnader och intakter per kvart</div>
+    <div class="card-sub">Historik och plan fram&#229;t &middot; kostnader och int&#228;kter per kvart (inkl. v&#228;rde av egenanv&#228;nd sol)</div>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Tid</th><th>Kop (ore)</th><th>Salj (ore)</th><th>Sol (W)</th><th>Last (W)</th><th>Batteri</th><th>SOC %</th><th>Kr/kvart</th><th>Beslut</th>
+          <th>Tid</th><th>K&#246;p (&#246;re)</th><th>S&#228;lj (&#246;re)</th><th>Sol (W)</th><th>Last (W)</th><th>Batteri</th><th>SOC %</th><th>Kr/kvart</th><th>Beslut</th>
         </tr></thead>
         <tbody id="decision-table"></tbody>
       </table>
@@ -139,21 +197,17 @@ function fillConfig(){
   document.getElementById('cfg-nordpool').value=NORDPOOL;
 }
 fillConfig();
-
 document.getElementById('config-save').addEventListener('click',function(){
   HA_URL=document.getElementById('cfg-url').value.trim().replace(/\/$/,'');
   HA_TOKEN=document.getElementById('cfg-token').value.trim();
   WORKER_URL=document.getElementById('cfg-worker').value.trim().replace(/\/$/,'');
   NORDPOOL=document.getElementById('cfg-nordpool').value.trim();
-  localStorage.setItem('ha_url',HA_URL);
-  localStorage.setItem('ha_token',HA_TOKEN);
-  localStorage.setItem('ha_worker',WORKER_URL);
-  localStorage.setItem('ha_nordpool',NORDPOOL);
+  localStorage.setItem('ha_url',HA_URL);localStorage.setItem('ha_token',HA_TOKEN);
+  localStorage.setItem('ha_worker',WORKER_URL);localStorage.setItem('ha_nordpool',NORDPOOL);
   document.getElementById('config-overlay').style.display='none';
   document.getElementById('app').style.display='block';
   loadData();
 });
-
 function openSettings(){fillConfig();document.getElementById('config-overlay').style.display='flex';}
 if(HA_URL&&HA_TOKEN){document.getElementById('config-overlay').style.display='none';document.getElementById('app').style.display='block';}
 
@@ -173,38 +227,42 @@ function extractFc(sensor){
   var valKey=Object.keys(fc[0]).find(function(k){return k!=='date';});
   return fc.map(function(p){return{t:Math.round(new Date(p.date).getTime()/900000)*900000,val:parseFloat(p[valKey])||0};});
 }
-
 function toMap(arr){var m={};arr.forEach(function(p){m[p.t]=p.val;});return m;}
 
 function classify(batt,pv,grid,buyKr,sellKr,avgBuyKr){
   var charging=batt<-50,discharging=batt>50,exporting=grid<-50;
   if(charging&&pv>=Math.abs(batt)*0.7) return{key:'solar_charge',label:'Ladda (sol)',color:'#22c55e'};
-  if(charging) return{key:'grid_charge',label:'Ladda (nat)',color:'#60a5fa'};
-  if(discharging&&exporting) return{key:'sell_solar',label:'Salj sol',color:'#4ade80'};
+  if(charging) return{key:'grid_charge',label:'Ladda (n\u00e4t)',color:'#60a5fa'};
+  if(discharging&&exporting) return{key:'sell_solar',label:'S\u00e4lj sol',color:'#4ade80'};
   if(discharging) return{key:'discharge',label:'Urladdning',color:'#f87171'};
   if(exporting) return{key:'export',label:'Exportera',color:'#2dd4bf'};
-  if(pv>200&&Math.abs(grid)<100) return{key:'cover_house',label:'Tack huset',color:'#fb923c'};
-  if(buyKr>avgBuyKr*1.15) return{key:'wait',label:'Vanta',color:'#94a3b8'};
+  if(pv>200&&Math.abs(grid)<100) return{key:'cover_house',label:'T\u00e4ck huset',color:'#fb923c'};
+  if(buyKr>avgBuyKr*1.15) return{key:'wait',label:'V\u00e4nta',color:'#94a3b8'};
   return{key:'observe',label:'Observera',color:'#64748b'};
 }
 
+// Economy per 15-min slot
+// Includes: grid transactions + value of self-consumed solar (avoided cost)
+// Caps outlier batt values to 15kW to filter EMHASS bugs
 function slotEconomy(batt,pv,load,grid,buyKr,sellKr){
   var h=0.25;
-  var gridBuyW=Math.max(0,grid);
-  var gridSellW=Math.max(0,-grid);
+  // Cap outlier battery values (EMHASS sometimes produces bogus spikes)
+  var gridCapped=Math.max(-15000,Math.min(15000,grid));
+  var gridBuyW=Math.max(0,gridCapped);
+  var gridSellW=Math.max(0,-gridCapped);
   var costKr=(gridBuyW/1000)*h*buyKr;
   var incomeKr=(gridSellW/1000)*h*sellKr;
-  return incomeKr-costKr;
+  // Value of self-consumed solar: energy from PV that avoids buying from grid
+  var selfConsumedW=Math.max(0,Math.min(pv,load));
+  var savedKr=(selfConsumedW/1000)*h*buyKr;
+  return incomeKr+savedKr-costKr; // positive = net benefit
 }
 
-var chart=null;
-var currentSpanH=12;
-var allData=null;
+var chart=null,currentSpanH=12,allData=null;
 
 function setSpan(btn,h){
   document.querySelectorAll('.span-btn').forEach(function(b){b.classList.remove('active');});
-  btn.classList.add('active');
-  currentSpanH=h;
+  btn.classList.add('active');currentSpanH=h;
   if(allData) renderChart(allData,h);
 }
 
@@ -213,41 +271,54 @@ function renderChart(d,spanH){
   var xMin=now-2*3600000;
   var xMax=xMin+spanH*3600000;
   var opts={
-    chart:{type:'line',height:360,background:'transparent',toolbar:{show:true,tools:{download:false,selection:false,zoom:true,zoomin:true,zoomout:true,pan:true,reset:true}},fontFamily:"'DM Sans',sans-serif",animations:{enabled:false}},
+    chart:{type:'line',height:360,background:'transparent',
+      toolbar:{show:true,tools:{download:false,selection:false,zoom:true,zoomin:true,zoomout:true,pan:true,reset:true}},
+      fontFamily:"'DM Sans',sans-serif",animations:{enabled:false}},
     theme:{mode:'dark'},
     dataLabels:{enabled:false},
-    stroke:{curve:['stepline','stepline','stepline','stepline','smooth','smooth','smooth','stepline','stepline','stepline'],width:[0,0,0,0,2,2,2,1.5,0,1]},
-    fill:{type:['solid','solid','solid','solid','gradient','gradient','solid','solid','gradient','solid'],opacity:[0.85,0.85,0.85,0.85,0.2,0.15,1,1,0.18,1],gradient:{shadeIntensity:1,opacityFrom:0.4,opacityTo:0.0,stops:[0,100]}},
+    stroke:{curve:['stepline','stepline','stepline','stepline','smooth','smooth','smooth','stepline','stepline','stepline'],
+            width:[0,0,0,0,2,2,2,1.5,0,1]},
+    fill:{type:['solid','solid','solid','solid','gradient','gradient','solid','solid','gradient','solid'],
+          opacity:[0.85,0.85,0.85,0.85,0.2,0.15,1,1,0.18,1],
+          gradient:{shadeIntensity:1,opacityFrom:0.4,opacityTo:0.0,stops:[0,100]}},
     plotOptions:{bar:{columnWidth:'85%',borderRadius:2}},
     series:[
       {name:'Ladda (sol)',type:'bar',data:d.solarCharge,color:'#22c55e'},
-      {name:'Ladda (nat)',type:'bar',data:d.gridCharge,color:'#60a5fa'},
+      {name:'Ladda (n\u00e4t)',type:'bar',data:d.gridCharge,color:'#60a5fa'},
       {name:'Urladdning',type:'bar',data:d.discharge,color:'#f87171'},
       {name:'Exportera',type:'bar',data:d.export_,color:'#2dd4bf'},
       {name:'Solproduktion',type:'area',data:d.pvLine,color:'#fbbf24'},
-      {name:'Forbrukning',type:'area',data:d.loadLine,color:'#f87171'},
+      {name:'F\u00f6rbrukning',type:'area',data:d.loadLine,color:'#f87171'},
       {name:'Batteri SOC',type:'line',data:d.socLine,color:'#38bdf8'},
-      {name:'Nateffekt',type:'line',data:d.gridLine,color:'#94a3b8'},
-      {name:'Nordpool (ore)',type:'area',data:d.nordBars,color:'#fcd34d'},
-      {name:'Saljpris',type:'line',data:d.sellLine,color:'#86efac'},
+      {name:'N\u00e4teffekt',type:'line',data:d.gridLine,color:'#94a3b8'},
+      {name:'Nordpool (\u00f6re)',type:'area',data:d.nordBars,color:'#fcd34d'},
+      {name:'S\u00e4ljpris',type:'line',data:d.sellLine,color:'#86efac'},
     ],
-    xaxis:{type:'datetime',min:xMin,max:xMax,labels:{datetimeFormatter:{hour:'HH:mm'},style:{colors:'#64748b'}},axisBorder:{color:'#1e2330'},axisTicks:{color:'#1e2330'}},
+    xaxis:{type:'datetime',min:xMin,max:xMax,
+      labels:{datetimeFormatter:{hour:'HH:mm'},style:{colors:'#64748b'}},
+      axisBorder:{color:'#1e2330'},axisTicks:{color:'#1e2330'}},
     yaxis:[
-      {seriesName:'Ladda (sol)',min:0,decimalsInFloat:0,labels:{style:{colors:'#64748b'},formatter:function(v){return v==null?'':Math.round(v)+' W';}}},
-      {seriesName:'Ladda (sol)',show:false},{seriesName:'Ladda (sol)',show:false},{seriesName:'Ladda (sol)',show:false},
+      {seriesName:'Ladda (sol)',min:0,decimalsInFloat:0,
+        labels:{style:{colors:'#64748b'},formatter:function(v){return v==null?'':Math.round(v)+' W';}}},
       {seriesName:'Ladda (sol)',show:false},{seriesName:'Ladda (sol)',show:false},
-      {opposite:true,seriesName:'Batteri SOC',min:0,max:100,decimalsInFloat:0,labels:{style:{colors:'#38bdf8'},formatter:function(v){return v==null?'':Math.round(v)+' %';}}},
+      {seriesName:'Ladda (sol)',show:false},{seriesName:'Ladda (sol)',show:false},
       {seriesName:'Ladda (sol)',show:false},
-      {opposite:true,seriesName:'Nordpool (ore)',min:0,max:300,decimalsInFloat:0,labels:{style:{colors:'#fcd34d'},formatter:function(v){return v==null?'':Math.round(v)+' ore';}}},
-      {seriesName:'Nordpool (ore)',show:false},
+      {opposite:true,seriesName:'Batteri SOC',min:0,max:100,decimalsInFloat:0,
+        labels:{style:{colors:'#38bdf8'},formatter:function(v){return v==null?'':Math.round(v)+' %';}}},
+      {seriesName:'Ladda (sol)',show:false},
+      {opposite:true,seriesName:'Nordpool (\u00f6re)',min:0,max:300,decimalsInFloat:0,
+        labels:{style:{colors:'#fcd34d'},formatter:function(v){return v==null?'':Math.round(v)+' \u00f6re';}}},
+      {seriesName:'Nordpool (\u00f6re)',show:false},
     ],
-    tooltip:{shared:true,intersect:false,x:{format:'HH:mm'},y:{formatter:function(v,ctx){
-      if(v==null||v===0) return null;
-      if(ctx.seriesIndex===6) return v.toFixed(1)+' %';
-      if(ctx.seriesIndex>=8) return Math.round(v)+' ore/kWh';
-      return Math.round(v)+' W';
-    }}},
-    annotations:{xaxis:[{x:now,borderColor:'#ef4444',borderWidth:2,label:{text:'NU',style:{color:'#fff',background:'#ef4444',fontFamily:"'DM Sans',sans-serif",fontSize:'11px'}}}]},
+    tooltip:{shared:true,intersect:false,x:{format:'HH:mm'},
+      y:{formatter:function(v,ctx){
+        if(v==null||v===0) return null;
+        if(ctx.seriesIndex===6) return v.toFixed(1)+' %';
+        if(ctx.seriesIndex>=8) return Math.round(v)+' \u00f6re/kWh';
+        return Math.round(v)+' W';
+      }}},
+    annotations:{xaxis:[{x:now,borderColor:'#ef4444',borderWidth:2,
+      label:{text:'NU',style:{color:'#fff',background:'#ef4444',fontFamily:"'DM Sans',sans-serif",fontSize:'11px'}}}]},
     legend:{show:true,position:'bottom',labels:{colors:'#94a3b8'},markers:{radius:4}},
     grid:{borderColor:'#1e2330',strokeDashArray:3},
   };
@@ -256,7 +327,7 @@ function renderChart(d,spanH){
   chart.render();
 }
 
-function updateEconUI(tableRows){
+function updateEconUI(tableRows,avgOre){
   var now=Date.now();
   var midnight=new Date();midnight.setHours(0,0,0,0);
   var midT=midnight.getTime();
@@ -268,22 +339,87 @@ function updateEconUI(tableRows){
     else forecast+=r.econKr;
   });
   var total=soFar+forecast;
-  function fmt(kr){return(kr>=0?'+':'')+Math.abs(kr).toFixed(2)+' kr';}
+  function fmt(kr){
+    var sign=kr>=0?'+':'';
+    return sign+Math.abs(kr).toFixed(2)+' kr';
+  }
   var sfEl=document.getElementById('econ-sf');
-  var sfCard=document.getElementById('econ-sf-card');
-  sfEl.textContent=hasFc?fmt(soFar):'-';
-  document.getElementById('econ-sf-sub').textContent=soFar>=0?'nettointakt hittills':'nettokostnad hittills';
-  sfCard.className='econ-card '+(soFar>=0?'econ-positive':'econ-negative');
+  sfEl.textContent=hasFc?fmt(soFar):'\u2013';
+  document.getElementById('econ-sf-sub').textContent=(soFar>=0?'nettovinst hittills (inkl. sparad sol)':'nettokostnad hittills');
+  document.getElementById('econ-sf-card').className='econ-card '+(soFar>=0?'econ-positive':'econ-negative');
   var fcEl=document.getElementById('econ-fc');
-  var fcCard=document.getElementById('econ-fc-card');
-  fcEl.textContent=hasFc?fmt(forecast):'-';
-  document.getElementById('econ-fc-sub').textContent=forecast>=0?'beraknad intakt':'beraknad kostnad';
-  fcCard.className='econ-card '+(forecast>=0?'econ-positive':'econ-negative');
+  fcEl.textContent=hasFc?fmt(forecast):'\u2013';
+  document.getElementById('econ-fc-sub').textContent=(forecast>=0?'ber\u00e4knad vinst':'ber\u00e4knad kostnad');
+  document.getElementById('econ-fc-card').className='econ-card '+(forecast>=0?'econ-positive':'econ-negative');
   var totEl=document.getElementById('econ-tot');
-  var totCard=document.getElementById('econ-tot-card');
-  totEl.textContent=hasFc?fmt(total):'-';
-  document.getElementById('econ-tot-sub').textContent=total>=0?'beraknad nettointakt':'beraknad nettokostnad';
-  totCard.className='econ-card '+(total>=0?'econ-positive':'econ-negative');
+  totEl.textContent=hasFc?fmt(total):'\u2013';
+  document.getElementById('econ-tot-sub').textContent=(total>=0?'ber\u00e4knad nettointäkt':'ber\u00e4knad nettokostnad');
+  document.getElementById('econ-tot-card').className='econ-card '+(total>=0?'econ-positive':'econ-negative');
+}
+
+// Load EV data
+async function loadEVData(){
+  try{
+    var evSensors=await Promise.all([
+      haFetch('/api/states/sensor.volvo_xc90_battery'),
+      haFetch('/api/states/sensor.volvo_xc90_charging_status'),
+      haFetch('/api/states/sensor.volvo_xc90_charging_power'),
+      haFetch('/api/states/sensor.volvo_xc90_distance_to_empty_battery'),
+      haFetch('/api/states/sensor.volvo_xc90_target_battery_charge_level'),
+      haFetch('/api/states/sensor.volvo_xc90_charging_connection_status'),
+      haFetch('/api/states/sensor.tygelvagen_40_status'),
+      haFetch('/api/states/sensor.tygelvagen_40_power'),
+      haFetch('/api/states/sensor.tygelvagen_40_session_energy'),
+      haFetch('/api/states/binary_sensor.tygelvagen_40_cable_lock'),
+      haFetch('/api/states/sensor.tibber_grid_reward_grid_reward_state'),
+      haFetch('/api/states/sensor.xc90_state_of_charge').catch(function(){return null;}),
+    ]);
+    var volvoBatt=evSensors[0],volvoStatus=evSensors[1],volvoPower=evSensors[2];
+    var volvoRange=evSensors[3],volvoTarget=evSensors[4],volvoConn=evSensors[5];
+    var easeeStatus=evSensors[6],easeePower=evSensors[7],easeeSession=evSensors[8];
+    var easeeCable=evSensors[9],tibberReward=evSensors[10],tibberSOC=evSensors[11];
+
+    // SOC — prefer Tibber (more reliable) then Volvo
+    var soc=tibberSOC?parseFloat(tibberSOC.state):parseFloat(volvoBatt.state);
+    if(isNaN(soc)) soc=0;
+    document.getElementById('ev-soc-pct').textContent=soc.toFixed(0)+' %';
+    var socBar=document.getElementById('ev-soc-bar');
+    socBar.style.width=soc+'%';
+    socBar.style.background=soc>60?'#22c55e':soc>30?'#fbbf24':'#f87171';
+
+    var statusMap={'CHARGING':'Laddar','CONNECTED_WITH_LOAD':'Laddklar (laddar)','CONNECTED_WITHOUT_LOAD':'Ansluten (laddar ej)','DISCONNECTED':'Ej ansluten','DISCONNECTED_WITH_LOAD':'Ej ansluten','FULLY_CHARGED':'Fulladdat','UNKNOWN':'Ok\u00e4nd'};
+    document.getElementById('ev-charge-status').textContent=statusMap[volvoStatus.state]||volvoStatus.state;
+    var pw=parseFloat(volvoPower.state);
+    document.getElementById('ev-charge-power').textContent=isNaN(pw)||pw===0?'\u2013':pw.toFixed(1)+' kW';
+    var rng=parseFloat(volvoRange.state);
+    document.getElementById('ev-range').textContent=isNaN(rng)?'\u2013':Math.round(rng)+' km';
+    document.getElementById('ev-target-soc').textContent=volvoTarget.state+' %';
+    document.getElementById('ev-connection').textContent=volvoConn.state||'\u2013';
+
+    // Easee
+    var easeeMap={'disconnected':'Ej ansluten','awaiting_start':'V\u00e4ntar','charging':'Laddar','ready_to_charge':'Laddklar','completed':'Klar','error':'Fel'};
+    document.getElementById('easee-status').textContent=easeeMap[easeeStatus.state]||easeeStatus.state;
+    var ep=parseFloat(easeePower.state);
+    document.getElementById('easee-power').textContent=isNaN(ep)||ep===0?'\u2013':ep.toFixed(0)+' W';
+    var es=parseFloat(easeeSession.state);
+    document.getElementById('easee-session').textContent=isNaN(es)?'\u2013':es.toFixed(2)+' kWh';
+    document.getElementById('easee-cable').textContent=easeeCable.state==='on'?'L\u00e5st':'Ol\u00e5st';
+
+    // Tibber reward
+    var rewardMap={'REWARDING':'Belönar nu','IDLE':'Inaktiv','UNKNOWN':'Ok\u00e4nd'};
+    document.getElementById('tibber-reward').textContent=rewardMap[tibberReward.state]||tibberReward.state;
+
+    // Today's departure time
+    var day=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date().getDay()];
+    haFetch('/api/states/time.xc90_departure_time_'+day).then(function(dep){
+      document.getElementById('ev-departure').textContent=dep.state||'\u2013';
+    }).catch(function(){document.getElementById('ev-departure').textContent='\u2013';});
+
+    document.getElementById('ev-card').style.display='block';
+  }catch(e){
+    // EV data load failed silently — sensors might not exist
+    console.warn('EV data load failed:', e.message);
+  }
 }
 
 async function loadData(){
@@ -301,11 +437,15 @@ async function loadData(){
       haFetch('/api/states/sensor.mpc_feed_in_price'),
       NORDPOOL?haFetch('/api/states/'+NORDPOOL).catch(function(){return null;}):Promise.resolve(null),
     ]);
-    var pvS=results[0],loadS=results[1],battS=results[2],socS=results[3],gridS=results[4],buyS=results[5],sellS=results[6],nordS=results[7];
+    var pvS=results[0],loadS=results[1],battS=results[2],socS=results[3];
+    var gridS=results[4],buyS=results[5],sellS=results[6],nordS=results[7];
+
     var pvFc=extractFc(pvS),loadFc=extractFc(loadS),battFc=extractFc(battS);
     var socFc=extractFc(socS),gridFc=extractFc(gridS),buyFc=extractFc(buyS),sellFc=extractFc(sellS);
     var pvMap=toMap(pvFc),loadMap=toMap(loadFc),battMap=toMap(battFc);
     var socMap=toMap(socFc),gridMap=toMap(gridFc),buyMap=toMap(buyFc),sellMap=toMap(sellFc);
+
+    // Nordpool — values already in öre
     var nordBars=[],nordPriceMap={};
     if(nordS&&nordS.attributes){
       var rawAll=(nordS.attributes.raw_today||[]).concat(nordS.attributes.raw_tomorrow||[]);
@@ -316,29 +456,37 @@ async function loadData(){
         nordPriceMap[Math.round(t/900000)*900000]=ore;
       });
     }
+
+    // Price stats from Nordpool today only
     var todayOre=(nordS&&nordS.attributes&&nordS.attributes.raw_today||[]).map(function(h){return h.value;});
     var avgOre=todayOre.length?todayOre.reduce(function(a,b){return a+b;},0)/todayOre.length:84;
     avgOreGlobal=avgOre;
-    document.getElementById('price-low').textContent=todayOre.length?Math.round(Math.min.apply(null,todayOre)):'-';
-    document.getElementById('price-avg').textContent=todayOre.length?Math.round(avgOre):'-';
-    document.getElementById('price-high').textContent=todayOre.length?Math.round(Math.max.apply(null,todayOre)):'-';
+    document.getElementById('price-low').textContent=todayOre.length?Math.round(Math.min.apply(null,todayOre)):'\u2013';
+    document.getElementById('price-avg').textContent=todayOre.length?Math.round(avgOre):'\u2013';
+    document.getElementById('price-high').textContent=todayOre.length?Math.round(Math.max.apply(null,todayOre)):'\u2013';
+
+    // Master timeline
     var masterFc=[loadFc,battFc,pvFc].sort(function(a,b){return b.length-a.length;})[0];
     var solarCharge=[],gridCharge=[],discharge=[],export_=[];
     var pvLine=[],loadLine=[],socLine=[],gridLine=[],sellLine=[];
     var tableRows=[];
     var buyVals=buyFc.map(function(p){return p.val;}).filter(function(v){return v>0;});
-    var avgBuyKr=buyVals.length?buyVals.reduce(function(a,b){return a+b;},0)/buyVals.length:0.10;
+    var avgBuyKr=buyVals.length?buyVals.reduce(function(a,b){return a+b;},0)/buyVals.length:0.084;
+
     masterFc.forEach(function(p){
       var t=p.t;
       var batt=battMap[t]!==undefined?battMap[t]:0;
       var pv=pvMap[t]!==undefined?pvMap[t]:0;
       var load=loadMap[t]!==undefined?loadMap[t]:p.val;
-      var grid=gridMap[t]!==undefined?gridMap[t]:0;
+      // Cap grid outliers (EMHASS bug with 12000W spikes)
+      var gridRaw=gridMap[t]!==undefined?gridMap[t]:0;
+      var grid=Math.max(-15000,Math.min(15000,gridRaw));
       var buy=buyMap[t]!==undefined?buyMap[t]:0;
       var sell=sellMap[t]!==undefined?sellMap[t]:0;
       var soc=socMap[t]!==undefined?socMap[t]:0;
       var dec=classify(batt,pv,grid,buy,sell,avgBuyKr);
       var econKr=slotEconomy(batt,pv,load,grid,buy,sell);
+
       pvLine.push([t,pv]);
       loadLine.push([t,load]);
       socLine.push([t,soc]);
@@ -346,10 +494,19 @@ async function loadData(){
       sellLine.push([t,sell*100]);
       solarCharge.push([t,dec.key==='solar_charge'?Math.abs(batt):0]);
       gridCharge.push([t,dec.key==='grid_charge'?Math.abs(batt):0]);
-      discharge.push([t,batt>50?batt:0]);
+      // Cap discharge display too
+      discharge.push([t,batt>50&&batt<15000?batt:0]);
       export_.push([t,dec.key==='export'?Math.abs(grid):0]);
-      tableRows.push({t:t,buyOre:buy>0?Math.round(buy*100):(nordPriceMap[t]||0),sellOre:sell>0?Math.round(sell*100):0,pv:pv,load:load,batt:batt,soc:soc,grid:grid,dec:dec,econKr:econKr});
+
+      tableRows.push({
+        t:t,
+        buyOre:buy>0?Math.round(buy*100):(nordPriceMap[t]||0),
+        sellOre:sell>0?Math.round(sell*100):0,
+        pv:pv,load:load,batt:batt,soc:soc,grid:grid,dec:dec,econKr:econKr
+      });
     });
+
+    // History for table and chart
     var historyRows=[];
     try{
       var now3h=new Date(Date.now()-3*3600000).toISOString();
@@ -367,16 +524,34 @@ async function loadData(){
         pvLine.unshift([t,pvHMap[t]||0]);
         loadLine.unshift([t,Math.round(avg)]);
         socLine.unshift([t,socHMap[t]||0]);
-        historyRows.push({t:t,isHistory:true,load:Math.round(avg),pv:pvHMap[t]||0,soc:socHMap[t]||0,buyOre:nordPriceMap[t]||0,sellOre:0,batt:0,grid:0,econKr:0,dec:{key:'history',label:'-',color:'#64748b'}});
+        var nordOre=nordPriceMap[t]||0;
+        // History economy: only count what we know (grid transactions unknown, use solar savings estimate)
+        var pvH2=pvHMap[t]||0;
+        var loadH2=Math.round(avg);
+        var selfConsumed=Math.max(0,Math.min(pvH2,loadH2));
+        var histEcon=(selfConsumed/1000)*0.25*(nordOre/100);
+        historyRows.push({t:t,isHistory:true,load:loadH2,pv:pvH2,soc:socHMap[t]||0,
+          buyOre:nordOre,sellOre:0,batt:0,grid:0,econKr:histEcon,
+          dec:{key:'history',label:'\u2013',color:'#64748b'}});
       });
     }catch(e){}
-    allData={solarCharge:solarCharge,gridCharge:gridCharge,discharge:discharge,export_:export_,pvLine:pvLine,loadLine:loadLine,socLine:socLine,gridLine:gridLine,nordBars:nordBars,sellLine:sellLine};
+
+    allData={solarCharge:solarCharge,gridCharge:gridCharge,discharge:discharge,
+             export_:export_,pvLine:pvLine,loadLine:loadLine,socLine:socLine,
+             gridLine:gridLine,nordBars:nordBars,sellLine:sellLine};
+
     document.getElementById('chart-loading').style.display='none';
     document.getElementById('chart').style.display='block';
     renderChart(allData,currentSpanH);
     renderTable(historyRows,tableRows,avgOre);
-    updateEconUI(tableRows);
-    document.getElementById('last-update').textContent='Uppdaterad '+new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+    updateEconUI(tableRows,avgOre);
+
+    document.getElementById('last-update').textContent=
+      'Uppdaterad '+new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+
+    // Load EV data in parallel (non-blocking)
+    loadEVData();
+
   }catch(e){
     document.getElementById('chart-loading').style.display='none';
     var el=document.getElementById('chart-error');
@@ -389,9 +564,12 @@ async function loadData(){
 function renderTable(histRows,forecastRows,avgOre){
   var now=Date.now();
   var seenT=new Set();
-  var fFilt=forecastRows.filter(function(r){return r.t>=now-3*3600000&&r.t<=now+24*3600000;}).filter(function(r){var k=!seenT.has(r.t);seenT.add(r.t);return k;});
+  var fFilt=forecastRows
+    .filter(function(r){return r.t>=now-3*3600000&&r.t<=now+24*3600000;})
+    .filter(function(r){var k=!seenT.has(r.t);seenT.add(r.t);return k;});
   var hFilt=histRows.filter(function(r){return!seenT.has(r.t);});
   var allRows=hFilt.concat(fFilt).sort(function(a,b){return a.t-b.t;});
+
   var tbody=document.getElementById('decision-table');
   tbody.innerHTML=allRows.map(function(r){
     var isPast=r.t<now-900000;
@@ -401,24 +579,24 @@ function renderTable(histRows,forecastRows,avgOre){
     var battDir=r.batt<-50?'&#9650;':r.batt>50?'&#9660;':'&mdash;';
     var battColor=r.batt<-50?'#22c55e':r.batt>50?'#f87171':'#64748b';
     var buyColor=r.buyOre>avgOre*1.1?'#f87171':r.buyOre>0&&r.buyOre<avgOre*0.9?'#22c55e':'#e2e8f0';
-    var econCell='-';
-    if(!r.isHistory&&r.econKr!==0){
+    var econCell='\u2013';
+    if(r.econKr!==0){
       var col=r.econKr>=0?'#22c55e':'#f87171';
       var sign=r.econKr>=0?'+':'';
       econCell='<span style="color:'+col+'">'+sign+r.econKr.toFixed(2)+' kr</span>';
-    } else if(r.isHistory&&r.buyOre>0&&r.load>0){
-      var estKr=-(r.load/1000)*0.25*(r.buyOre/100);
-      econCell='<span style="color:#64748b">'+estKr.toFixed(2)+' kr</span>';
     }
-    var decCell=r.dec.key==='history'?'<span style="color:#64748b;font-size:0.76rem">historik</span>':'<span class="badge" style="background:'+r.dec.color+'22;color:'+r.dec.color+'"><span class="dot" style="background:'+r.dec.color+'"></span>'+r.dec.label+'</span>';
+    var battDisplay=Math.abs(r.batt)>50&&Math.abs(r.batt)<15000?battDir+' '+Math.abs(Math.round(r.batt))+' W':'\u2013';
+    var decCell=r.dec.key==='history'
+      ?'<span style="color:#64748b;font-size:0.76rem">historik</span>'
+      :'<span class="badge" style="background:'+r.dec.color+'22;color:'+r.dec.color+'"><span class="dot" style="background:'+r.dec.color+'"></span>'+r.dec.label+'</span>';
     return '<tr class="'+rowCls+'">'
       +'<td class="mono">'+time+(isPast?' &#8617;':isNow?' &#9664;':'')+'</td>'
-      +'<td class="mono" style="color:'+buyColor+'">'+(r.buyOre>0?Math.round(r.buyOre):'-')+'</td>'
-      +'<td class="mono" style="color:#86efac">'+(r.sellOre>0?Math.round(r.sellOre):'-')+'</td>'
+      +'<td class="mono" style="color:'+buyColor+'">'+(r.buyOre>0?Math.round(r.buyOre):'\u2013')+'</td>'
+      +'<td class="mono" style="color:#86efac">'+(r.sellOre>0?Math.round(r.sellOre):'\u2013')+'</td>'
       +'<td class="mono" style="color:#fbbf24">'+(Math.round(r.pv)||'0')+'</td>'
-      +'<td class="mono">'+(Math.round(r.load)||'-')+'</td>'
-      +'<td class="mono" style="color:'+battColor+';font-size:0.78rem">'+(Math.abs(r.batt)>50?battDir+' '+Math.abs(Math.round(r.batt))+' W':'-')+'</td>'
-      +'<td class="mono" style="color:#38bdf8">'+(r.soc>0?r.soc.toFixed(1)+' %':'-')+'</td>'
+      +'<td class="mono">'+(Math.round(r.load)||'\u2013')+'</td>'
+      +'<td class="mono" style="color:'+battColor+';font-size:0.78rem">'+battDisplay+'</td>'
+      +'<td class="mono" style="color:#38bdf8">'+(r.soc>0?r.soc.toFixed(1)+' %':'\u2013')+'</td>'
       +'<td class="mono">'+econCell+'</td>'
       +'<td>'+decCell+'</td>'
       +'</tr>';
