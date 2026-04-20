@@ -10,48 +10,51 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0f1117;--surface:#181c26;--surface2:#1e2330;--border:#2a2f3d;--text:#e2e8f0;--muted:#64748b;--green:#22c55e;--blue:#60a5fa;--orange:#fb923c;--yellow:#fbbf24;--red:#f87171;--cyan:#34d399;}
 html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;min-height:100vh}
-/* ── TOP CARDS ───────────────────────────────────────────── */
+
+/* ═══════════════════════════════════════════════════════════
+   TOP CARDS
+═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   TOP CARDS
+═══════════════════════════════════════════════════════════ */
 .top-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
-.top-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;min-height:160px;display:flex;flex-direction:column;justify-content:space-between}
-.tc-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
-.tc-val-row{display:flex;align-items:baseline;gap:4px}
-.tc-val{font-size:2.2rem;font-weight:700;font-family:'DM Mono',monospace;line-height:1}
-.tc-unit{font-size:.9rem;color:var(--muted);font-weight:400}
-.tc-sub{font-size:.75rem;color:var(--muted);margin-top:4px}
-.tc-detail{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:auto;padding-top:10px;border-top:1px solid var(--border)}
-.tc-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:.82rem;font-weight:600;margin-bottom:6px}
-.tc-price-val{color:#fbbf24}
-.tc-solar-val{color:#fbbf24}
-.tc-rel{font-size:.78rem;margin-top:2px}
-
-/* ── POWER FLOW ──────────────────────────────────────────── */
-.pf-outer{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 16px;margin-bottom:16px}
-.pf-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.tc{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;min-height:170px}
+.tc-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:10px}
+.tc-main{display:flex;align-items:baseline;gap:5px;margin-bottom:4px}
+.tc-num{font-size:2.4rem;font-weight:700;font-family:'DM Mono',monospace;line-height:1}
+.tc-unit{font-size:.9rem;color:var(--muted)}
+.tc-sub{font-size:.75rem;color:var(--muted);margin-bottom:auto}
+.tc-foot{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:auto;padding-top:10px;border-top:1px solid var(--border)}
+.tc-badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:.82rem;font-weight:600;margin-bottom:8px}
+.tc-rel{font-size:.78rem;margin-top:2px;margin-bottom:auto}
+/* ═══════════════════════════════════════════════════════════
+   POWER FLOW
+═══════════════════════════════════════════════════════════ */
+.pf-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px}
+.pf-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
 .pf-live{display:flex;align-items:center;gap:6px;font-size:.75rem;color:#22c55e;font-weight:500}
-.pf-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pfpulse 2s infinite}
-@keyframes pfpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
-.pf-grid-layout{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto auto;gap:0;position:relative;min-height:260px;align-items:center;justify-items:center}
-.pf-node{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100px;height:100px;border-radius:22px;border:2px solid transparent;transition:transform .2s;cursor:default;position:relative;z-index:2}
-.pf-node:hover{transform:scale(1.04)}
-.pf-node-icon{font-size:1.8rem;line-height:1;margin-bottom:2px}
-.pf-node-watt{font-size:.75rem;font-family:'DM Mono',monospace;font-weight:600;color:#fff;margin-bottom:1px}
-.pf-node-lbl{font-size:.65rem;color:rgba(255,255,255,.75)}
-.pf-solar-node{background:linear-gradient(135deg,#92400e,#d97706);border-color:#fbbf2455;grid-column:2;grid-row:1}
-.pf-house-node{background:linear-gradient(135deg,#831843,#db2777);border-color:#f472b655;grid-column:2;grid-row:2}
-.pf-batt-node{background:linear-gradient(135deg,#1e3a5f,#2563eb);border-color:#60a5fa55;grid-column:1;grid-row:2}
-.pf-grid-node{background:linear-gradient(135deg,#1f2937,#374151);border-color:#6b728055;grid-column:3;grid-row:2}
-.pf-ev-node{background:linear-gradient(135deg,#14532d,#16a34a);border-color:#22c55e55;grid-column:1;grid-row:3}
-.pf-dec-row{grid-column:2;grid-row:3;display:flex;align-items:center;justify-content:center}
-.pf-dec-pill{padding:5px 16px;border-radius:20px;font-size:.8rem;font-weight:600}
-.pf-arrows{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1}
-/* flow arrow labels between nodes */
-.pf-flow-wrap{position:relative}
-.pf-flow-label{position:absolute;font-size:.68rem;font-family:'DM Mono',monospace;font-weight:600;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:1px 6px;white-space:nowrap;z-index:3}
-
+.pf-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pfp 2s ease-in-out infinite}
+@keyframes pfp{0%,100%{opacity:1}50%{opacity:.3}}
+/* 3-col grid: [batt] [sol/house/dec] [grid] */
+.pf-grid{display:grid;grid-template-columns:1fr 1.2fr 1fr;grid-template-rows:auto auto auto;gap:20px 12px;align-items:center;justify-items:center;position:relative}
+.pf-n{width:96px;height:96px;border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:transform .2s;cursor:default;border:2px solid transparent}
+.pf-n:hover{transform:scale(1.05)}
+.pf-n-ico{font-size:1.8rem;line-height:1}
+.pf-n-w{font-size:.72rem;font-family:'DM Mono',monospace;font-weight:700;color:#fff}
+.pf-n-lbl{font-size:.62rem;color:rgba(255,255,255,.75)}
+.pf-sol{background:linear-gradient(135deg,#78350f,#d97706);border-color:#fbbf2440;grid-column:2;grid-row:1}
+.pf-batt{background:linear-gradient(135deg,#1e3a5f,#2563eb);border-color:#60a5fa40;grid-column:1;grid-row:2}
+.pf-house{background:linear-gradient(135deg,#7c1d48,#db2777);border-color:#f472b640;grid-column:2;grid-row:2}
+.pf-grid-n{background:linear-gradient(135deg,#1c2532,#374151);border-color:#6b728040;grid-column:3;grid-row:2}
+.pf-ev{background:linear-gradient(135deg,#14532d,#16a34a);border-color:#22c55e40;grid-column:1;grid-row:3}
+.pf-dec-wrap{grid-column:2;grid-row:3;display:flex;justify-content:center}
+.pf-dec-pill{padding:5px 16px;border-radius:20px;font-size:.8rem;font-weight:600;white-space:nowrap}
+.pf-svg-wrap{position:absolute;inset:0;pointer-events:none}
+.pf-svg-wrap svg{width:100%;height:100%;overflow:visible}
 @media(max-width:640px){
   .top-row{grid-template-columns:1fr}
-  .pf-node{width:80px;height:80px}
-  .pf-node-icon{font-size:1.4rem}
+  .pf-n{width:76px;height:76px}
+  .pf-n-ico{font-size:1.4rem}
 }
 #config-overlay{position:fixed;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
 #config-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;width:min(480px,92vw)}
@@ -142,112 +145,107 @@ td.mono{font-family:'DM Mono',monospace}
       <button class="btn" onclick="loadData()">&#8634; Uppdatera</button>
       <button class="btn-icon" onclick="openSettings()">&#9881;</button>
     </div>
-  <!-- ── TOP CARDS ──────────────────────────────────────── -->
+  <!-- ══ TOP CARDS ════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════ TOP CARDS ═══════ -->
   <div class="top-row">
 
     <!-- Elpris nu -->
-    <div class="top-card">
-      <div>
-        <div class="tc-label">ELPRIS NU</div>
-        <div class="tc-val-row">
-          <span class="tc-val tc-price-val" id="tc-price">&#8211;</span>
-          <span class="tc-unit">&#246;re/kWh</span>
-        </div>
-        <div class="tc-rel" id="tc-price-rel" style="color:var(--muted)"></div>
-        <canvas id="tc-sparkline" height="44" style="width:100%;display:block;margin-top:8px;opacity:.8"></canvas>
+    <div class="tc">
+      <div class="tc-lbl">ELPRIS NU</div>
+      <div class="tc-main">
+        <span class="tc-num" id="tc-price" style="color:#fbbf24">&#8211;</span>
+        <span class="tc-unit">&#246;re/kWh</span>
       </div>
-      <div class="tc-detail">
+      <div class="tc-rel" id="tc-price-rel" style="color:var(--muted)">&#8211;</div>
+      <canvas id="tc-spark" style="width:100%;height:44px;display:block;margin:10px 0 4px"></canvas>
+      <div class="tc-foot">
         <span>&#9889; Spot: <b id="tc-spot">&#8211;</b> &#246;re</span>
-        <span>&#36; S&#228;lj: <b id="tc-sell-ore">&#8211;</b> &#246;re</span>
+        <span>&#36; S&#228;lj: <b id="tc-sell">&#8211;</b> &#246;re</span>
       </div>
     </div>
 
     <!-- Sol idag -->
-    <div class="top-card">
-      <div>
-        <div class="tc-label">SOL IDAG</div>
-        <div class="tc-val-row">
-          <span class="tc-val tc-solar-val" id="tc-solar-kwh">&#8211;</span>
-          <span class="tc-unit">kWh</span>
-        </div>
-        <div class="tc-sub" id="tc-solar-sub">producerat idag</div>
-        <div style="margin-top:12px;font-size:.82rem;color:var(--muted)">
-          Nu: <b id="tc-pv-now" style="color:#fbbf24">&#8211;</b> W
-        </div>
-        <div style="margin-top:4px;font-size:.82rem;color:var(--muted)">
-          Batteri: <b id="tc-soc-now" style="color:#38bdf8">&#8211;</b>
-        </div>
+    <div class="tc">
+      <div class="tc-lbl">SOL IDAG</div>
+      <div class="tc-main">
+        <span class="tc-num" id="tc-sol-kwh" style="color:#fbbf24">&#8211;</span>
+        <span class="tc-unit">kWh producerat</span>
       </div>
-      <div class="tc-detail">
-        <span>Laddad idag: <b id="tc-batt-chg">&#8211;</b> kWh</span>
-        <span>Urladd: <b id="tc-batt-dis">&#8211;</b> kWh</span>
+      <div class="tc-sub" style="margin-top:10px">
+        Nu: <b id="tc-pv-w" style="color:#fbbf24">&#8211;</b> W &nbsp;|&nbsp;
+        Batteri: <b id="tc-soc" style="color:#38bdf8">&#8211;</b>
+      </div>
+      <div class="tc-foot">
+        <span>Laddad: <b id="tc-bchg">&#8211;</b> kWh</span>
+        <span>Urladdad: <b id="tc-bdis">&#8211;</b> kWh</span>
       </div>
     </div>
 
     <!-- Beslut nu -->
-    <div class="top-card">
-      <div>
-        <div class="tc-label">BESLUT NU</div>
-        <span class="tc-badge" id="tc-badge">&#8211;</span>
-        <div class="tc-val-row" style="margin-top:4px">
-          <span class="tc-val" id="tc-dec-w">&#8211;</span>
-          <span class="tc-unit">W</span>
-        </div>
-        <div class="tc-sub" id="tc-dec-sub" style="margin-top:6px"></div>
+    <div class="tc">
+      <div class="tc-lbl">BESLUT NU</div>
+      <span class="tc-badge" id="tc-badge">&#8211;</span>
+      <div class="tc-main">
+        <span class="tc-num" id="tc-dec-w">&#8211;</span>
+        <span class="tc-unit">W</span>
       </div>
-      <div class="tc-detail">
-        <span>Import idag: <b id="tc-import-kwh">&#8211;</b> kWh</span>
-        <span>Export idag: <b id="tc-export-kwh">&#8211;</b> kWh</span>
+      <div class="tc-sub" id="tc-dec-sub">&#8211;</div>
+      <div class="tc-foot">
+        <span>Import: <b id="tc-imp">&#8211;</b> kWh</span>
+        <span>Export: <b id="tc-exp">&#8211;</b> kWh</span>
       </div>
     </div>
 
   </div>
 
-  <!-- ── POWER FLOW ────────────────────────────────────────── -->
-  <div class="pf-outer">
+  <!-- ═══════════════════════════════════ POWER FLOW ═══════ -->
+  <div class="pf-card">
     <div class="pf-header">
       <span class="card-title">Power Flow</span>
       <span class="pf-live"><span class="pf-dot"></span>Live &ndash; uppdateras var 15s</span>
     </div>
-    <div class="pf-flow-wrap" style="position:relative">
-      <div class="pf-grid-layout">
-        <!-- Sol -->
-        <div class="pf-node pf-solar-node" id="pf-solar">
-          <div class="pf-node-watt" id="pf-solar-w">&#8211;</div>
-          <div class="pf-node-icon">&#9728;&#65039;</div>
-          <div class="pf-node-lbl">Sol</div>
+    <!-- Relative wrapper so SVG can overlay grid -->
+    <div style="position:relative">
+      <div class="pf-grid" id="pf-grid-el">
+        <!-- Sol (top center) -->
+        <div class="pf-n pf-sol" id="pfn-sol">
+          <div class="pf-n-w" id="pfw-sol">&#8211;</div>
+          <div class="pf-n-ico">&#9728;&#65039;</div>
+          <div class="pf-n-lbl">Sol</div>
         </div>
-        <!-- Batteri -->
-        <div class="pf-node pf-batt-node" id="pf-batt">
-          <div class="pf-node-watt" id="pf-batt-w">&#8211;</div>
-          <div class="pf-node-icon">&#128267;</div>
-          <div class="pf-node-lbl" id="pf-batt-lbl">Batteri</div>
+        <!-- Batteri (middle left) -->
+        <div class="pf-n pf-batt" id="pfn-batt">
+          <div class="pf-n-w" id="pfw-batt">&#8211;</div>
+          <div class="pf-n-ico">&#128267;</div>
+          <div class="pf-n-lbl" id="pfl-batt">Batteri</div>
         </div>
-        <!-- Hus -->
-        <div class="pf-node pf-house-node" id="pf-house">
-          <div class="pf-node-watt" id="pf-house-w">&#8211;</div>
-          <div class="pf-node-icon">&#127968;</div>
-          <div class="pf-node-lbl">Hus</div>
+        <!-- Hus (middle center) -->
+        <div class="pf-n pf-house" id="pfn-house">
+          <div class="pf-n-w" id="pfw-house">&#8211;</div>
+          <div class="pf-n-ico">&#127968;</div>
+          <div class="pf-n-lbl">Hus</div>
         </div>
-        <!-- N&#228;t -->
-        <div class="pf-node pf-grid-node" id="pf-grid">
-          <div class="pf-node-watt" id="pf-grid-w">&#8211;</div>
-          <div class="pf-node-icon">&#128268;</div>
-          <div class="pf-node-lbl" id="pf-grid-lbl">N&#228;t</div>
+        <!-- N&#228;t (middle right) -->
+        <div class="pf-n pf-grid-n" id="pfn-grid">
+          <div class="pf-n-w" id="pfw-grid">&#8211;</div>
+          <div class="pf-n-ico">&#128268;</div>
+          <div class="pf-n-lbl" id="pfl-grid">N&#228;t</div>
         </div>
-        <!-- Beslut-pill -->
-        <div class="pf-dec-row">
-          <span class="pf-dec-pill" id="pf-dec-pill">&#8211;</span>
+        <!-- EV (bottom left, hidden unless charging) -->
+        <div class="pf-n pf-ev" id="pfn-ev" style="display:none">
+          <div class="pf-n-w" id="pfw-ev">&#8211;</div>
+          <div class="pf-n-ico">&#128663;</div>
+          <div class="pf-n-lbl">Bil</div>
         </div>
-        <!-- EV (visas om laddning p&#229;g&#229;r) -->
-        <div class="pf-node pf-ev-node" id="pf-ev" style="display:none">
-          <div class="pf-node-watt" id="pf-ev-w">&#8211;</div>
-          <div class="pf-node-icon">&#128663;</div>
-          <div class="pf-node-lbl">Bil</div>
+        <!-- Beslut pill (bottom center) -->
+        <div class="pf-dec-wrap">
+          <span class="pf-dec-pill" id="pf-dec">&#8211;</span>
         </div>
       </div>
-      <!-- Animated flow lines -->
-      <svg id="pf-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible"></svg>
+      <!-- SVG overlay for flow lines -->
+      <div class="pf-svg-wrap" id="pf-svg-wrap">
+        <svg id="pf-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
     </div>
   </div>
 
@@ -986,282 +984,321 @@ function computeChargingWindow(tableRows, chartData) {
 }
 
 
-// ── LIVE TOP + POWER FLOW (Sigenergy + EMHASS + Nordpool) ────
-var _liveTimer = null;
+
+// ══ LIVE DATA (Sigenergy + EMHASS + Nordpool) ══════════════
+
+// ═══════════════════════════════════════════════════════════
+// LIVE TOP CARDS + POWER FLOW  (Sigenergy + EMHASS + Nordpool)
+// Updates every 15 seconds
+// ═══════════════════════════════════════════════════════════
+var _liveT = null;
 
 async function loadLiveData() {
   try {
-    var res = await Promise.all([
-      // Sigenergy real sensors
-      haFetch('/api/states/sensor.sigen_plant_pv_power'),
-      haFetch('/api/states/sensor.sigen_plant_consumed_power'),
-      haFetch('/api/states/sensor.sigen_plant_battery_power'),
-      haFetch('/api/states/sensor.sigen_plant_battery_state_of_charge'),
-      haFetch('/api/states/sensor.sigen_plant_grid_active_power'),
-      haFetch('/api/states/sensor.sigen_plant_daily_pv_energy'),
-      haFetch('/api/states/sensor.sigen_plant_daily_battery_charge_energy'),
-      haFetch('/api/states/sensor.sigen_plant_daily_battery_discharge_energy'),
-      haFetch('/api/states/sensor.sigen_plant_daily_grid_import_energy'),
-      haFetch('/api/states/sensor.sigen_plant_daily_grid_export_energy'),
-      // EMHASS prices
-      haFetch('/api/states/sensor.mpc_general_price'),
-      haFetch('/api/states/sensor.mpc_feed_in_price'),
-      haFetch('/api/states/sensor.mpc_batt_power'),
-      // Nordpool
+    // Fetch all sensors in parallel, each with individual error handling
+    var fetches = [
+      haFetch('/api/states/sensor.sigen_plant_pv_power').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.sigen_plant_consumed_power').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.sigen_plant_battery_power').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.sigen_plant_battery_state_of_charge').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.sigen_plant_grid_active_power').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.sigen_plant_daily_pv_energy').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.sigen_plant_daily_battery_charge_energy').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.sigen_plant_daily_battery_discharge_energy').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.sigen_plant_daily_grid_import_energy').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.sigen_plant_daily_grid_export_energy').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.mpc_general_price').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.mpc_feed_in_price').catch(function(){return {state:'0'};}),
+      haFetch('/api/states/sensor.mpc_batt_power').catch(function(){return {state:'0'};}),
       NORDPOOL ? haFetch('/api/states/'+NORDPOOL).catch(function(){return null;}) : Promise.resolve(null),
-      // Easee EV charger
-      haFetch('/api/states/sensor.tygelvagen_40_power').catch(function(){return null;}),
-    ]);
+      haFetch('/api/states/sensor.tygelvagen_40_power').catch(function(){return {state:'0'};}),
+    ];
+    var r = await Promise.all(fetches);
 
-    var pvW    = parseFloat(res[0].state) || 0;
-    var loadW  = parseFloat(res[1].state) || 0;
-    var battW  = parseFloat(res[2].state) || 0;   // Sigenergy: pos=charge, neg=discharge (check!)
-    var socPct = parseFloat(res[3].state) || 0;
-    var gridW  = parseFloat(res[4].state) || 0;   // pos=import, neg=export
-    var pvKwh  = parseFloat(res[5].state) || 0;
-    var battChgKwh = parseFloat(res[6].state) || 0;
-    var battDisKwh = parseFloat(res[7].state) || 0;
-    var importKwh  = parseFloat(res[8].state) || 0;
-    var exportKwh  = parseFloat(res[9].state) || 0;
-    var buyKr  = parseFloat(res[10].state) || 0;
-    var sellKr = parseFloat(res[11].state) || 0;
-    var emhassBattW = parseFloat(res[12].state) || 0; // for classify
-    var nordS  = res[13];
-    var evPwrW = res[14] ? parseFloat(res[14].state) || 0 : 0;
+    var pvW    = parseFloat(r[0].state)  || 0;
+    var loadW  = parseFloat(r[1].state)  || 0;
+    var battW  = parseFloat(r[2].state)  || 0;
+    var socPct = parseFloat(r[3].state)  || 0;
+    var gridW  = parseFloat(r[4].state)  || 0;
+    var pvKwh  = parseFloat(r[5].state)  || 0;
+    var bChg   = parseFloat(r[6].state)  || 0;
+    var bDis   = parseFloat(r[7].state)  || 0;
+    var impKwh = parseFloat(r[8].state)  || 0;
+    var expKwh = parseFloat(r[9].state)  || 0;
+    var buyKr  = parseFloat(r[10].state) || 0;
+    var sellKr = parseFloat(r[11].state) || 0;
+    var emhBat = parseFloat(r[12].state) || 0;
+    var nordS  = r[13];
+    var evW    = parseFloat(r[14].state) || 0;
 
-    var buyOre  = Math.round(buyKr * 100);
+    var buyOre  = Math.round(buyKr  * 100);
     var sellOre = Math.round(sellKr * 100);
 
-    // ── Nordpool sparkline + price stats ──────────────────────
-    var todayOre = (nordS && nordS.attributes && nordS.attributes.raw_today || []).map(function(h){return h.value;});
-    var avgOre   = todayOre.length ? todayOre.reduce(function(a,b){return a+b;},0)/todayOre.length : buyOre;
+    // Nordpool raw_today
+    var todayOre = [];
+    if (nordS && nordS.attributes && nordS.attributes.raw_today) {
+      todayOre = nordS.attributes.raw_today.map(function(h) { return h.value; });
+    }
+    var avgOre = todayOre.length
+      ? todayOre.reduce(function(a,b){return a+b;},0) / todayOre.length
+      : buyOre || 84;
 
-    document.getElementById('tc-price').textContent = buyOre;
+    // ── Elpris-kort ─────────────────────────────────────────
+    setText('tc-price', buyOre);
     var relPct = avgOre > 0 ? Math.round((buyOre - avgOre) / avgOre * 100) : 0;
     var relEl = document.getElementById('tc-price-rel');
-    if (relPct > 5) {
-      relEl.textContent = 'Nära snitt ↑' + relPct + '%';
-      relEl.style.color = '#f87171';
-    } else if (relPct < -5) {
-      relEl.textContent = 'Under snitt ↓' + Math.abs(relPct) + '%';
-      relEl.style.color = '#22c55e';
-    } else {
-      relEl.textContent = 'Nära snitt';
-      relEl.style.color = '#94a3b8';
+    if (relEl) {
+      if (relPct > 5)       { relEl.textContent = 'Över snitt \u2191' + relPct + '%';      relEl.style.color = '#f87171'; }
+      else if (relPct < -5) { relEl.textContent = 'Under snitt \u2193' + Math.abs(relPct) + '%'; relEl.style.color = '#22c55e'; }
+      else                  { relEl.textContent = 'Nära snitt';                             relEl.style.color = '#94a3b8'; }
     }
-    document.getElementById('tc-spot').textContent = nordS ? Math.round(parseFloat(nordS.attributes && nordS.attributes.current_price || nordS.state) || buyOre) : buyOre;
-    document.getElementById('tc-sell-ore').textContent = sellOre;
+    var spotOre = nordS && nordS.attributes
+      ? Math.round(parseFloat(nordS.attributes.current_price || nordS.state) || buyOre)
+      : buyOre;
+    setText('tc-spot',  spotOre);
+    setText('tc-sell',  sellOre);
     drawSparkline(todayOre, buyOre, avgOre);
 
-    // ── Sol-kort ──────────────────────────────────────────────
-    document.getElementById('tc-solar-kwh').textContent = pvKwh.toFixed(1);
-    document.getElementById('tc-pv-now').textContent    = Math.round(pvW);
-    document.getElementById('tc-soc-now').textContent   = socPct.toFixed(1) + ' %';
-    document.getElementById('tc-batt-chg').textContent  = battChgKwh.toFixed(1);
-    document.getElementById('tc-batt-dis').textContent  = battDisKwh.toFixed(1);
+    // ── Sol-kort ─────────────────────────────────────────────
+    setText('tc-sol-kwh', pvKwh.toFixed(1));
+    setText('tc-pv-w',    Math.round(pvW));
+    setText('tc-soc',     socPct.toFixed(1) + ' %');
+    setText('tc-bchg',    bChg.toFixed(1));
+    setText('tc-bdis',    bDis.toFixed(1));
 
-    // ── Beslut-kort ───────────────────────────────────────────
-    // Use EMHASS batt convention for classify, but Sigenergy for display
-    var dec = classify(emhassBattW, pvW, gridW, buyKr, sellKr, buyKr);
+    // ── Beslut-kort ──────────────────────────────────────────
+    var dec = classify(emhBat, pvW, gridW, buyKr, sellKr, buyKr);
     var badge = document.getElementById('tc-badge');
-    badge.textContent = dec.label;
-    badge.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:.82rem;font-weight:600;background:' + dec.color + '22;color:' + dec.color + ';border:1px solid ' + dec.color + '55';
-
+    if (badge) {
+      badge.textContent = dec.label;
+      badge.style.cssText = 'display:inline-block;padding:3px 12px;border-radius:20px;font-size:.82rem;font-weight:600;'
+        + 'background:' + dec.color + '22;color:' + dec.color + ';border:1px solid ' + dec.color + '44';
+    }
     var mainW = Math.abs(battW) > 50 ? Math.abs(battW) : Math.abs(gridW) > 50 ? Math.abs(gridW) : pvW;
-    document.getElementById('tc-dec-w').textContent = Math.round(mainW);
-    document.getElementById('tc-dec-w').style.color = dec.color;
-    document.getElementById('tc-dec-sub').textContent =
+    var decW = document.getElementById('tc-dec-w');
+    if (decW) { decW.textContent = Math.round(mainW); decW.style.color = dec.color; }
+
+    var descTxt =
       battW > 50  ? 'Laddar batteri ' + Math.round(battW) + ' W' :
       battW < -50 ? 'Urladdar batteri ' + Math.abs(Math.round(battW)) + ' W' :
-      gridW < -50 ? 'Säljer ' + Math.abs(Math.round(gridW)) + ' W till nät' :
-      gridW > 50  ? 'Köper ' + Math.round(gridW) + ' W från nät' : 'Självförsörjande';
-    document.getElementById('tc-import-kwh').textContent = importKwh.toFixed(1);
-    document.getElementById('tc-export-kwh').textContent = exportKwh.toFixed(1);
+      gridW < -50 ? 'S\u00e4ljer ' + Math.abs(Math.round(gridW)) + ' W till n\u00e4t' :
+      gridW > 50  ? 'K\u00f6per ' + Math.round(gridW) + ' W fr\u00e5n n\u00e4t' : 'Sj\u00e4lvf\u00f6rs\u00f6rjande';
+    setText('tc-dec-sub', descTxt);
+    setText('tc-imp', impKwh.toFixed(1));
+    setText('tc-exp', expKwh.toFixed(1));
 
-    // ── Battery node color by SOC ─────────────────────────────
-    var bNode = document.getElementById('pf-batt');
-    var bColor = socPct > 60 ? '#1e40af,#2563eb' : socPct > 30 ? '#92400e,#d97706' : '#7f1d1d,#dc2626';
-    bNode.style.background = 'linear-gradient(135deg,' + bColor + ')';
-    document.getElementById('pf-batt-lbl').textContent = 'Batteri ' + socPct.toFixed(0) + '%';
+    // ── Power Flow nodes ─────────────────────────────────────
+    // Sigenergy: battW > 0 = charging, battW < 0 = discharging
+    // gridW > 0 = importing, gridW < 0 = exporting
+    var battDir = battW > 50 ? '\u25b2 ' : battW < -50 ? '\u25bc ' : '';
+    var gridDir = gridW > 50 ? '\u25bc K\u00f6p ' : gridW < -50 ? '\u25b2 S\u00e4lj ' : '';
 
-    // ── Power Flow nodes ──────────────────────────────────────
-    // Sigenergy battery convention: check if positive = charging or discharging
-    // From binary sensors: battery_charging / battery_discharging
-    // battW > 0 = charging in Sigenergy (opposite of EMHASS)
-    var battCharging    = battW > 50;
-    var battDischarging = battW < -50;
-    var gridImporting   = gridW > 50;
-    var gridExporting   = gridW < -50;
+    setText('pfw-sol',  Math.round(pvW)   + ' W');
+    setText('pfw-house',Math.round(loadW) + ' W');
+    setText('pfw-batt', battDir + Math.abs(Math.round(battW)) + ' W');
+    setText('pfw-grid', gridDir + Math.abs(Math.round(gridW)) + ' W');
+    setText('pfl-batt', 'Batteri ' + socPct.toFixed(0) + '%');
+    setText('pfl-grid', gridW > 50 ? 'N\u00e4t (k\u00f6p)' : gridW < -50 ? 'N\u00e4t (s\u00e4lj)' : 'N\u00e4t');
 
-    document.getElementById('pf-solar-w').textContent  = Math.round(pvW) + ' W';
-    document.getElementById('pf-house-w').textContent  = Math.round(loadW) + ' W';
-    var battDir = battCharging ? '▲ ' : battDischarging ? '▼ ' : '';
-    document.getElementById('pf-batt-w').textContent   = battDir + Math.abs(Math.round(battW)) + ' W';
-    var gridDir = gridImporting ? '▼ Köp ' : gridExporting ? '▲ Sälj ' : '';
-    document.getElementById('pf-grid-w').textContent   = gridDir + Math.abs(Math.round(gridW)) + ' W';
-    document.getElementById('pf-grid-lbl').textContent = gridImporting ? 'Nät (köp)' : gridExporting ? 'Nät (sälj)' : 'Nät';
+    // Battery color by SOC
+    var bn = document.getElementById('pfn-batt');
+    if (bn) bn.style.background = socPct > 60 ? 'linear-gradient(135deg,#1e3a5f,#2563eb)'
+      : socPct > 30 ? 'linear-gradient(135deg,#78350f,#d97706)' : 'linear-gradient(135deg,#7f1d1d,#dc2626)';
 
     // Decision pill
-    var pill = document.getElementById('pf-dec-pill');
-    pill.textContent = '● ' + dec.label;
-    pill.style.cssText = 'padding:5px 16px;border-radius:20px;font-size:.8rem;font-weight:600;background:' + dec.color + '22;color:' + dec.color + ';border:1px solid ' + dec.color + '55';
-
-    // EV node
-    if (evPwrW > 100) {
-      document.getElementById('pf-ev').style.display = 'flex';
-      document.getElementById('pf-ev-w').textContent = Math.round(evPwrW) + ' W';
-    } else {
-      document.getElementById('pf-ev').style.display = 'none';
+    var pill = document.getElementById('pf-dec');
+    if (pill) {
+      pill.textContent = '\u25cf ' + dec.label;
+      pill.style.cssText = 'padding:5px 16px;border-radius:20px;font-size:.8rem;font-weight:600;'
+        + 'background:' + dec.color + '22;color:' + dec.color + ';border:1px solid ' + dec.color + '44';
     }
 
-    // Draw animated SVG lines
-    drawPFLines(pvW, loadW, battW, gridW, evPwrW, dec);
+    // EV node
+    var evNode = document.getElementById('pfn-ev');
+    if (evNode) {
+      if (evW > 100) {
+        evNode.style.display = 'flex';
+        setText('pfw-ev', Math.round(evW) + ' W');
+      } else {
+        evNode.style.display = 'none';
+      }
+    }
 
-  } catch(e) { console.warn('Live error:', e); }
-}
+    // Draw flow lines (delayed so layout is complete)
+    setTimeout(function() { drawFlowLines(pvW, loadW, battW, gridW, evW); }, 100);
 
-function drawSparkline(todayOre, currentOre, avgOre) {
-  var canvas = document.getElementById('tc-sparkline');
-  if (!canvas || !canvas.getContext || !todayOre.length) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.offsetWidth || canvas.parentElement.offsetWidth || 260;
-  var H = 44;
-  canvas.width = W; canvas.height = H;
-  ctx.clearRect(0, 0, W, H);
-  var min = Math.min.apply(null, todayOre);
-  var max = Math.max.apply(null, todayOre);
-  var range = max - min || 1;
-  var pts = todayOre.map(function(v, i) {
-    return { x: (i / (todayOre.length - 1)) * W, y: H - ((v - min) / range) * (H - 6) - 3 };
-  });
-  // Gradient fill
-  var grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, 'rgba(251,191,36,.35)');
-  grad.addColorStop(1, 'rgba(251,191,36,0)');
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, H);
-  pts.forEach(function(p) { ctx.lineTo(p.x, p.y); });
-  ctx.lineTo(pts[pts.length-1].x, H);
-  ctx.closePath();
-  ctx.fillStyle = grad; ctx.fill();
-  // Line
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  pts.forEach(function(p) { ctx.lineTo(p.x, p.y); });
-  ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.8; ctx.stroke();
-  // Avg line
-  var avgY = H - ((avgOre - min) / range) * (H - 6) - 3;
-  ctx.beginPath();
-  ctx.moveTo(0, avgY); ctx.lineTo(W, avgY);
-  ctx.strokeStyle = '#ffffff20'; ctx.lineWidth = 1; ctx.setLineDash([4,4]); ctx.stroke();
-  ctx.setLineDash([]);
-  // Current hour dot
-  var hour = new Date().getHours();
-  var idx = Math.min(hour, todayOre.length - 1);
-  if (idx >= 0 && idx < pts.length) {
-    ctx.beginPath();
-    ctx.arc(pts[idx].x, pts[idx].y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#fbbf24'; ctx.fill();
+  } catch(e) {
+    console.warn('[Live] Error:', e);
   }
 }
 
-function drawPFLines(pvW, loadW, battW, gridW, evW, dec) {
-  var svg = document.getElementById('pf-svg');
-  if (!svg) return;
+function setText(id, val) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
 
-  // Get node positions dynamically from DOM
-  var wrap = svg.parentElement;
-  var wRect = wrap.getBoundingClientRect();
+function drawSparkline(todayOre, currentOre, avgOre) {
+  var canvas = document.getElementById('tc-spark');
+  if (!canvas || !canvas.getContext) return;
+  if (!todayOre || !todayOre.length) return;
 
-  function center(id) {
+  // Use offsetWidth of parent since canvas may not have width set yet
+  var W = canvas.parentElement ? canvas.parentElement.offsetWidth - 40 : 220;
+  W = Math.max(W, 100);
+  var H = 44;
+  canvas.width  = W;
+  canvas.height = H;
+
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  var min = Math.min.apply(null, todayOre);
+  var max = Math.max.apply(null, todayOre);
+  var rng = max - min || 1;
+  var n   = todayOre.length;
+
+  var pts = todayOre.map(function(v, i) {
+    return [i / (n - 1) * W, H - ((v - min) / rng) * (H - 8) - 4];
+  });
+
+  // Fill gradient
+  var g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, 'rgba(251,191,36,.4)');
+  g.addColorStop(1, 'rgba(251,191,36,0)');
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], H);
+  pts.forEach(function(p) { ctx.lineTo(p[0], p[1]); });
+  ctx.lineTo(pts[n-1][0], H);
+  ctx.closePath();
+  ctx.fillStyle = g; ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  pts.forEach(function(p) { ctx.lineTo(p[0], p[1]); });
+  ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.8; ctx.stroke();
+
+  // Avg dashed
+  var ay = H - ((avgOre - min) / rng) * (H - 8) - 4;
+  ctx.beginPath(); ctx.moveTo(0, ay); ctx.lineTo(W, ay);
+  ctx.strokeStyle = '#ffffff30'; ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+
+  // Current hour dot
+  var hi = Math.min(new Date().getHours(), n - 1);
+  ctx.beginPath();
+  ctx.arc(pts[hi][0], pts[hi][1], 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#fbbf24'; ctx.fill();
+}
+
+function drawFlowLines(pvW, loadW, battW, gridW, evW) {
+  var svg  = document.getElementById('pf-svg');
+  var wrap = document.getElementById('pf-svg-wrap');
+  var grid = document.getElementById('pf-grid-el');
+  if (!svg || !wrap || !grid) return;
+
+  var gRect = grid.getBoundingClientRect();
+  var wRect = wrap.parentElement.getBoundingClientRect();
+
+  // Set SVG size to match the parent container
+  var W = wRect.width, H = gRect.bottom - wRect.top + 10;
+  wrap.style.height = H + 'px';
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.setAttribute('width',  W);
+  svg.setAttribute('height', H);
+
+  function nodeCenter(id) {
     var el = document.getElementById(id);
-    if (!el) return null;
+    if (!el || el.style.display === 'none') return null;
     var r = el.getBoundingClientRect();
     return {
-      x: r.left - wRect.left + r.width / 2,
+      x: r.left - wRect.left + r.width  / 2,
       y: r.top  - wRect.top  + r.height / 2,
       r: r.width / 2,
     };
   }
 
-  svg.style.width  = wRect.width  + 'px';
-  svg.style.height = wRect.height + 'px';
-  svg.setAttribute('viewBox', '0 0 ' + wRect.width + ' ' + wRect.height);
+  var sol   = nodeCenter('pfn-sol');
+  var house = nodeCenter('pfn-house');
+  var batt  = nodeCenter('pfn-batt');
+  var grid2 = nodeCenter('pfn-grid');
+  var ev    = nodeCenter('pfn-ev');
 
-  var solar = center('pf-solar');
-  var house = center('pf-house');
-  var batt  = center('pf-batt');
-  var grid  = center('pf-grid');
-  var ev    = center('pf-ev');
+  if (!sol || !house || !batt || !grid2) { svg.innerHTML = ''; return; }
 
-  if (!solar || !house || !batt || !grid) return;
-
-  function mkLine(x1, y1, x2, y2, color, pw, dashed) {
-    if (Math.abs(pw) < 20) return '';
-    var thick = Math.min(7, Math.max(2, Math.abs(pw) / 500));
-    var dash  = dashed ? 'stroke-dasharray="10 7"' : '';
-    var anim  = dashed ? '<animate attributeName="stroke-dashoffset" from="0" to="-34" dur="1s" repeatCount="indefinite"/>' : '';
-    // Midpoint for curve
-    var mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-    return '<path d="M' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' Q' + mx.toFixed(1) + ',' + my.toFixed(1) + ' ' + x2.toFixed(1) + ',' + y2.toFixed(1) + '"'
-      + ' fill="none" stroke="' + color + '" stroke-width="' + thick.toFixed(1) + '" stroke-linecap="round" opacity=".9" ' + dash + '>'
-      + anim + '</path>';
+  function animLine(x1,y1,x2,y2, color, powerW) {
+    var thick = Math.min(6, Math.max(2, Math.abs(powerW) / 400));
+    var dur   = Math.max(0.6, 2 - Math.abs(powerW) / 3000); // faster = more power
+    var id    = 'anim' + Math.round(Math.random()*99999);
+    return ''
+      + '<path id="' + id + '" d="M' + x1.toFixed(1) + ',' + y1.toFixed(1)
+      + ' Q' + ((x1+x2)/2).toFixed(1) + ',' + ((y1+y2)/2).toFixed(1)
+      + ' ' + x2.toFixed(1) + ',' + y2.toFixed(1) + '"'
+      + ' fill="none" stroke="' + color + '" stroke-width="' + thick.toFixed(1) + '"'
+      + ' stroke-linecap="round" opacity=".9"'
+      + ' stroke-dasharray="12 8">'
+      + '<animate attributeName="stroke-dashoffset" from="0" to="-40"'
+      + ' dur="' + dur.toFixed(2) + 's" repeatCount="indefinite"/>'
+      + '</path>';
   }
 
-  function edge(from, to, direction) {
-    // direction: 'tb' top-bottom, 'lr' left-right etc
-    // Return exit/enter points on node circles
-    var dx = to.x - from.x, dy = to.y - from.y;
-    var dist = Math.sqrt(dx*dx + dy*dy);
-    var nx = dx/dist, ny = dy/dist;
+  // Edge points between two nodes
+  function edge(a, b) {
+    var dx = b.x - a.x, dy = b.y - a.y;
+    var d  = Math.sqrt(dx*dx + dy*dy) || 1;
     return {
-      x1: from.x + nx * from.r,
-      y1: from.y + ny * from.r,
-      x2: to.x   - nx * to.r,
-      y2: to.y   - ny * to.r,
+      x1: a.x + (dx/d) * a.r,
+      y1: a.y + (dy/d) * a.r,
+      x2: b.x - (dx/d) * b.r,
+      y2: b.y - (dy/d) * b.r,
     };
   }
 
   var lines = '';
 
-  // Solar → House
+  // Sol → Hus (always if PV > 0)
   if (pvW > 20) {
-    var e = edge(solar, house, 'tb');
-    lines += mkLine(e.x1, e.y1, e.x2, e.y2, '#fbbf24', pvW, true);
+    var e = edge(sol, house);
+    lines += animLine(e.x1, e.y1, e.x2, e.y2, '#fbbf24', pvW);
   }
-  // Solar → Battery (charging from solar)
-  if (battW > 50) {
-    var e = edge(solar, batt, 'diag');
-    lines += mkLine(e.x1, e.y1, e.x2, e.y2, '#22c55e', battW, true);
+  // Sol → Batteri (Sigenergy: battW > 0 = charging)
+  if (battW > 50 && pvW > battW * 0.5) {
+    var e = edge(sol, batt);
+    lines += animLine(e.x1, e.y1, e.x2, e.y2, '#22c55e', battW);
   }
-  // Battery → House (discharging)
+  // Batteri → Hus (Sigenergy: battW < 0 = discharging)
   if (battW < -50) {
-    var e = edge(batt, house, 'lr');
-    lines += mkLine(e.x1, e.y1, e.x2, e.y2, '#60a5fa', Math.abs(battW), true);
+    var e = edge(batt, house);
+    lines += animLine(e.x1, e.y1, e.x2, e.y2, '#60a5fa', Math.abs(battW));
   }
-  // Grid → House (importing)
+  // Nät → Hus (importing: gridW > 0)
   if (gridW > 50) {
-    var e = edge(grid, house, 'lr');
-    lines += mkLine(e.x1, e.y1, e.x2, e.y2, '#f87171', gridW, true);
+    var e = edge(grid2, house);
+    lines += animLine(e.x1, e.y1, e.x2, e.y2, '#f87171', gridW);
   }
-  // House → Grid (exporting)
+  // Hus → Nät (exporting: gridW < 0)
   if (gridW < -50) {
-    var e = edge(house, grid, 'lr');
-    lines += mkLine(e.x1, e.y1, e.x2, e.y2, '#22c55e', Math.abs(gridW), true);
+    var e = edge(house, grid2);
+    lines += animLine(e.x1, e.y1, e.x2, e.y2, '#22c55e', Math.abs(gridW));
   }
-  // EV charging
+  // Nät → Batteri (charging from grid when no sun)
+  if (battW > 50 && pvW < battW * 0.3) {
+    var e = edge(grid2, batt);
+    lines += animLine(e.x1, e.y1, e.x2, e.y2, '#a78bfa', battW);
+  }
+  // Batteri → EV
   if (ev && evW > 100) {
-    var e = edge(batt, ev, 'tb');
-    lines += mkLine(e.x1, e.y1, e.x2, e.y2, '#4ade80', evW, true);
+    var e = edge(batt, ev);
+    lines += animLine(e.x1, e.y1, e.x2, e.y2, '#4ade80', evW);
   }
 
   svg.innerHTML = lines;
 }
 
 function startLive() {
+  if (_liveT) clearInterval(_liveT);
   loadLiveData();
-  if (_liveTimer) clearInterval(_liveTimer);
-  _liveTimer = setInterval(loadLiveData, 15000);
+  _liveT = setInterval(loadLiveData, 15000);
 }
 
 // Start charging via Easee HA service
