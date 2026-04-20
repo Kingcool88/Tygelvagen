@@ -145,7 +145,7 @@ td.mono{font-family:'DM Mono',monospace}
       <button class="btn" onclick="loadData()">&#8634; Uppdatera</button>
       <button class="btn-icon" onclick="openSettings()">&#9881;</button>
     </div>
-  <!-- ══ TOP CARDS ════════════════════════════════════════ -->
+  </div>
   <!-- ═══════════════════════════════════ TOP CARDS ═══════ -->
   <div class="top-row">
 
@@ -204,9 +204,8 @@ td.mono{font-family:'DM Mono',monospace}
       <span class="card-title">Power Flow</span>
       <span class="pf-live"><span class="pf-dot"></span>Live &ndash; uppdateras var 15s</span>
     </div>
-    <!-- Relative wrapper so SVG can overlay grid -->
-    <div style="position:relative">
-      <div class="pf-grid" id="pf-grid-el">
+    <div class="pf-flow-outer" style="position:relative;min-height:280px">
+      <div class="pf-grid" id="pf-grid-el" style="position:relative;z-index:2">
         <!-- Sol (top center) -->
         <div class="pf-n pf-sol" id="pfn-sol">
           <div class="pf-n-w" id="pfw-sol">&#8211;</div>
@@ -242,10 +241,9 @@ td.mono{font-family:'DM Mono',monospace}
           <span class="pf-dec-pill" id="pf-dec">&#8211;</span>
         </div>
       </div>
-      <!-- SVG overlay for flow lines -->
-      <div class="pf-svg-wrap" id="pf-svg-wrap">
-        <svg id="pf-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-      </div>
+      <!-- SVG overlay — sits on top of grid via absolute positioning -->
+      <svg id="pf-svg" xmlns="http://www.w3.org/2000/svg"
+        style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible"></svg>
     </div>
   </div>
 
@@ -362,7 +360,7 @@ document.getElementById('config-save').addEventListener('click',function(){
   localStorage.setItem('ha_worker',WORKER_URL);localStorage.setItem('ha_nordpool',NORDPOOL);
   document.getElementById('config-overlay').style.display='none';
   document.getElementById('app').style.display='block';
-  loadData();startLive();
+  loadData();startLive();startLive();
 });
 function openSettings(){fillConfig();document.getElementById('config-overlay').style.display='flex';}
 if(HA_URL&&HA_TOKEN){document.getElementById('config-overlay').style.display='none';document.getElementById('app').style.display='block';}
@@ -495,8 +493,18 @@ function renderChart(d,spanH){
   // Start Nu-line updater
   if(window._nuTimer) clearInterval(window._nuTimer);
   window._nuTimer=setInterval(function(){
-    if(chart) chart.updateOptions({annotations:{xaxis:[{x:Date.now(),borderColor:'#ef4444',borderWidth:2,label:{text:'NU',style:{color:'#fff',background:'#ef4444',fontFamily:"'DM Sans',sans-serif",fontSize:'11px'}}}]}},false,false);
-  },60000);
+    if(!chart) return;
+    chart.updateOptions({
+      annotations:{
+        xaxis:[{
+          x:Date.now(),
+          borderColor:'#ef4444',
+          borderWidth:2,
+          label:{text:'NU',style:{color:'#fff',background:'#ef4444',fontFamily:"'DM Sans',sans-serif",fontSize:'11px'}}
+        }]
+      }
+    },false,false);
+  },30000);
 }
 
 function updateEconUI(tableRows,avgOre){
@@ -863,16 +871,10 @@ function renderTable(histRows,forecastRows,avgOre,actualMap){
     var battDir=r.batt<-50?'&#9650;':r.batt>50?'&#9660;':'&mdash;';
     var battColor=r.batt<-50?'#22c55e':r.batt>50?'#f87171':'#64748b';
     var buyColor=r.buyOre>avgOre*1.1?'#f87171':r.buyOre>0&&r.buyOre<avgOre*0.9?'#22c55e':'#e2e8f0';
-    var faktCell='–';
     var faktVal=actualMap[r.t];
-    if(!r.isHistory&&faktVal!==undefined){
-      var fc2=r.t<now?faktVal:undefined; // only for past slots
-      if(fc2!==undefined){
-        var fc2Col=fc2>=0?'#22c55e':'#f87171';
-        var fc2Sign=fc2>=0?'+':'';
-        faktCell='<span style="color:'+fc2Col+'">'+fc2Sign+fc2.toFixed(2)+' kr</span>';
-      }
-    }
+    var faktCell=faktVal!==undefined&&r.t<now
+      ?'<span style="color:'+(faktVal>=0?'#22c55e':'#f87171')+'">'+(faktVal>=0?'+':'')+faktVal.toFixed(2)+' kr</span>'
+      :'–';
     var econCell='–';
     if(r.econKr!==0){
       var col=r.econKr>=0?'#22c55e':'#f87171';
@@ -1128,7 +1130,7 @@ async function loadLiveData() {
     setTimeout(function() { drawFlowLines(pvW, loadW, battW, gridW, evW); }, 100);
 
   } catch(e) {
-    console.warn('[Live] Error:', e);
+    console.error('[Live] Error:', e.message, e);
   }
 }
 
@@ -1193,16 +1195,13 @@ function drawSparkline(todayOre, currentOre, avgOre) {
 
 function drawFlowLines(pvW, loadW, battW, gridW, evW) {
   var svg  = document.getElementById('pf-svg');
-  var wrap = document.getElementById('pf-svg-wrap');
-  var grid = document.getElementById('pf-grid-el');
-  if (!svg || !wrap || !grid) return;
+  var outer = svg ? svg.parentElement : null;
+  if (!svg || !outer) return;
 
-  var gRect = grid.getBoundingClientRect();
-  var wRect = wrap.parentElement.getBoundingClientRect();
+  var oRect = outer.getBoundingClientRect();
+  var W = oRect.width || 400;
+  var H = oRect.height || 280;
 
-  // Set SVG size to match the parent container
-  var W = wRect.width, H = gRect.bottom - wRect.top + 10;
-  wrap.style.height = H + 'px';
   svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
   svg.setAttribute('width',  W);
   svg.setAttribute('height', H);
@@ -1211,9 +1210,10 @@ function drawFlowLines(pvW, loadW, battW, gridW, evW) {
     var el = document.getElementById(id);
     if (!el || el.style.display === 'none') return null;
     var r = el.getBoundingClientRect();
+    if (r.width === 0) return null;
     return {
-      x: r.left - wRect.left + r.width  / 2,
-      y: r.top  - wRect.top  + r.height / 2,
+      x: r.left - oRect.left + r.width  / 2,
+      y: r.top  - oRect.top  + r.height / 2,
       r: r.width / 2,
     };
   }
@@ -1330,38 +1330,47 @@ async function startCharging(){
 // Fetch actual grid transactions for past 2h from HA history
 async function loadActualEconomy(){
   try{
-    var since=new Date(Date.now()-3*3600000).toISOString();
+    // Fetch from midnight today to get full day history
+    var midnight=new Date();midnight.setHours(0,0,0,0);
+    var since=midnight.toISOString();
+    // Use Sigenergy grid sensors: grid_import_power (pos=importing) and grid_export_power (pos=exporting)
+    // Fall back to mpc sensors if Sigenergy not available
     var hist=await haFetch('/api/history/period/'+since
-      +'?filter_entity_id=sensor.mpc_grid_power,sensor.mpc_general_price,sensor.mpc_feed_in_price&minimal_response=true');
-    var gridH=hist[0]||[],buyH=hist[1]||[],sellH=hist[2]||[];
-    
-    // Build maps by 15-min bucket
-    var gridMap={},buyMap={},sellMap={};
-    function bucket(s){
-      var vals=[];
-      s.forEach(function(e){
+      +'?filter_entity_id=sensor.sigen_plant_grid_import_power,sensor.sigen_plant_grid_export_power,sensor.mpc_general_price,sensor.mpc_feed_in_price&minimal_response=true');
+
+    // hist[0]=import W, hist[1]=export W, hist[2]=buyKr, hist[3]=sellKr
+    var importH=hist[0]||[], exportH=hist[1]||[], buyH=hist[2]||[], sellH=hist[3]||[];
+
+    function toBuckets(arr){
+      var m={};
+      arr.forEach(function(e){
         var t=Math.round(new Date(e.last_changed||e.last_updated).getTime()/900000)*900000;
-        if(!gridMap[t+'_arr']) gridMap[t+'_arr']=[];
-        gridMap[t+'_arr'].push(parseFloat(e.state)||0);
+        if(!m[t]) m[t]=[];
+        m[t].push(parseFloat(e.state)||0);
       });
+      return m;
     }
-    var gridBuckets={},buyBuckets={},sellBuckets={};
-    gridH.forEach(function(e){var t=Math.round(new Date(e.last_changed||e.last_updated).getTime()/900000)*900000;if(!gridBuckets[t])gridBuckets[t]=[];gridBuckets[t].push(parseFloat(e.state)||0);});
-    buyH.forEach(function(e){var t=Math.round(new Date(e.last_changed||e.last_updated).getTime()/900000)*900000;if(!buyBuckets[t])buyBuckets[t]=[];buyBuckets[t].push(parseFloat(e.state)||0);});
-    sellH.forEach(function(e){var t=Math.round(new Date(e.last_changed||e.last_updated).getTime()/900000)*900000;if(!sellBuckets[t])sellBuckets[t]=[];sellBuckets[t].push(parseFloat(e.state)||0);});
-    
+    function avg(arr){return arr.reduce(function(a,b){return a+b;},0)/arr.length;}
+
+    var impB  = toBuckets(importH);
+    var expB  = toBuckets(exportH);
+    var buyB  = toBuckets(buyH);
+    var sellB = toBuckets(sellH);
+
     var actualMap={};
-    Object.keys(gridBuckets).forEach(function(t){
-      var g=gridBuckets[t].reduce(function(a,b){return a+b;},0)/gridBuckets[t].length;
-      var buy=buyBuckets[t]?buyBuckets[t].reduce(function(a,b){return a+b;},0)/buyBuckets[t].length:0;
-      var sell=sellBuckets[t]?sellBuckets[t].reduce(function(a,b){return a+b;},0)/sellBuckets[t].length:0;
-      // Cap grid outliers
-      g=Math.max(-8000,Math.min(8000,g));
-      var gridImport=Math.max(0,g);
-      var gridExport=Math.max(0,-g);
-      var cost=(gridImport/1000)*0.25*buy;
-      var income=(gridExport/1000)*0.25*sell;
-      actualMap[parseInt(t)]=income-cost;
+    // Use all timestamps from import or export buckets
+    var allT = new Set(Object.keys(impB).concat(Object.keys(expB)));
+    allT.forEach(function(t){
+      var impW  = impB[t]  ? avg(impB[t])  : 0;
+      var expW  = expB[t]  ? avg(expB[t])  : 0;
+      var buyKr = buyB[t]  ? avg(buyB[t])  : 0;
+      var selKr = sellB[t] ? avg(sellB[t]) : 0;
+      // Cap outliers
+      impW = Math.min(impW, 25000);
+      expW = Math.min(expW, 25000);
+      var cost   = (impW/1000)*0.25*buyKr;
+      var income = (expW/1000)*0.25*selKr;
+      actualMap[parseInt(t)] = income - cost; // positive = net income
     });
     return actualMap;
   }catch(e){
