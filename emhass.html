@@ -460,7 +460,7 @@ function renderChart(d,spanH){
       {name:'S\u00e4ljpris (\u00f6re)',type:'line',data:d.sellLine,color:'#86efac'},
     ],
     xaxis:{type:'datetime',min:xMin,max:xMax,
-      labels:{datetimeFormatter:{hour:'HH:mm'},style:{colors:'#64748b'}},
+      labels:{datetimeFormatter:{hour:'HH:mm'},style:{colors:'#64748b'},datetimeUTC:false},
       axisBorder:{color:'#1e2330'},axisTicks:{color:'#1e2330'}},
     yaxis:[
       {seriesName:'Ladda (sol)',min:0,decimalsInFloat:0,
@@ -830,7 +830,7 @@ async function loadData(){
     document.getElementById('chart').style.display='block';
     renderChart(allData,currentSpanH);
     // Fetch actual economy data for past 2h
-    var actualMap=await loadActualEconomy();
+    var actualMap=await loadActualEconomy(nordPriceMap);
     renderTable(historyRows,tableRows,avgOre,actualMap);
     updateEconUI(tableRows,avgOre);
 
@@ -839,9 +839,9 @@ async function loadData(){
 
     // Load EV data in parallel (non-blocking)
     loadEVData().then(function(){
-      // After EV data loaded, compute charging window and annotate chart
-      computeChargingWindow(tableRows, allData);
-    });
+      // After EV data loaded, compute charging window
+      setTimeout(function(){ computeChargingWindow(tableRows, allData); }, 200);
+    }).catch(function(e){ console.warn('EV load failed:', e); });
 
   }catch(e){
     document.getElementById('chart-loading').style.display='none';
@@ -906,6 +906,8 @@ var EV_BATTERY_KWH = 18.8; // kWh (Volvo XC90 PHEV)
 var EV_CHARGER_KW  = 3.7;  // kW (Easee, standard AC)
 
 function computeChargingWindow(tableRows, chartData) {
+  // Guard: ev-plan-text must exist
+  if (!document.getElementById('ev-plan-text')) return;
   // Get current SOC and target
   var socEl  = document.getElementById('ev-soc-pct');
   var targEl = document.getElementById('ev-target-soc');
@@ -916,7 +918,7 @@ function computeChargingWindow(tableRows, chartData) {
   var depTime = depEl&&depEl.textContent!=='–'?depEl.textContent:null;
 
   if(!socPct||!depTime) {
-    document.getElementById('ev-charge-from').textContent = 'Bil ej ansluten';
+    setText('ev-plan-text') = 'Bil ej ansluten';
     return;
   }
 
@@ -926,7 +928,7 @@ function computeChargingWindow(tableRows, chartData) {
   var neededSlots = Math.ceil(neededHours * 4); // 15-min slots
 
   if(neededKwh < 0.5) {
-    document.getElementById('ev-charge-from').textContent = 'Redan fulladdat';
+    setText('ev-plan-text') = 'Redan fulladdat';
     document.getElementById('ev-charge-to').textContent = '–';
     document.getElementById('ev-charge-duration').textContent = '–';
     return;
@@ -949,7 +951,7 @@ function computeChargingWindow(tableRows, chartData) {
   }).sort(function(a,b){return a.buyOre-b.buyOre;}); // cheapest first
 
   if(slots.length < neededSlots) {
-    document.getElementById('ev-charge-from').textContent = 'Otillräckligt med tid';
+    setText('ev-plan-text') = 'Otillräckligt med tid';
     return;
   }
 
@@ -963,7 +965,7 @@ function computeChargingWindow(tableRows, chartData) {
     return d.toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
   };
 
-  document.getElementById('ev-charge-from').textContent = fmtTime(fromTs);
+  setText('ev-plan-text') = fmtTime(fromTs);
   document.getElementById('ev-charge-to').textContent   = fmtTime(toTs);
 
   // Show price range of cheap hours
@@ -1046,7 +1048,7 @@ async function loadLiveData() {
       : buyOre || 84;
 
     // ── Elpris-kort ─────────────────────────────────────────
-    setText('tc-price', buyOre);
+    try { setText('tc-price', buyOre); } catch(e) {}
     var relPct = avgOre > 0 ? Math.round((buyOre - avgOre) / avgOre * 100) : 0;
     var relEl = document.getElementById('tc-price-rel');
     if (relEl) {
@@ -1131,12 +1133,17 @@ async function loadLiveData() {
 
   } catch(e) {
     console.error('[Live] Error:', e.message, e);
+    // Show error in tc-price-rel as diagnostic
+    var el = document.getElementById('tc-price-rel');
+    if (el) el.textContent = 'Live fel: ' + e.message;
   }
 }
 
 function setText(id, val) {
-  var el = document.getElementById(id);
-  if (el) el.textContent = val;
+  try {
+    var el = document.getElementById(id);
+    if (el) el.textContent = val != null ? val : '–';
+  } catch(e) {}
 }
 
 function drawSparkline(todayOre, currentOre, avgOre) {
@@ -1328,7 +1335,8 @@ async function startCharging(){
 }
 
 // Fetch actual grid transactions for past 2h from HA history
-async function loadActualEconomy(){
+async function loadActualEconomy(nordPriceMap){
+  nordPriceMap = nordPriceMap || {};
   try{
     // Fetch from midnight today to get full day history
     var midnight=new Date();midnight.setHours(0,0,0,0);
@@ -1336,10 +1344,16 @@ async function loadActualEconomy(){
     // Use Sigenergy grid sensors: grid_import_power (pos=importing) and grid_export_power (pos=exporting)
     // Fall back to mpc sensors if Sigenergy not available
     var hist=await haFetch('/api/history/period/'+since
-      +'?filter_entity_id=sensor.sigen_plant_grid_import_power,sensor.sigen_plant_grid_export_power,sensor.mpc_general_price,sensor.mpc_feed_in_price&minimal_response=true');
+      +'?filter_entity_id=sensor.sigen_plant_grid_import_power,sensor.sigen_plant_grid_export_power,sensor.sigen_plant_grid_active_power,sensor.mpc_general_price,sensor.mpc_feed_in_price&minimal_response=true');
 
-    // hist[0]=import W, hist[1]=export W, hist[2]=buyKr, hist[3]=sellKr
-    var importH=hist[0]||[], exportH=hist[1]||[], buyH=hist[2]||[], sellH=hist[3]||[];
+    // hist[0]=import W, hist[1]=export W, hist[2]=grid_active, hist[3]=buyKr, hist[4]=sellKr
+    var importH=hist[0]||[], exportH=hist[1]||[], gridH=hist[2]||[], buyH=hist[3]||[], sellH=hist[4]||[];
+    // If dedicated import/export sensors are empty, derive from grid_active_power
+    // sigen grid_active_power: positive=import, negative=export
+    if(!importH.length && gridH.length) {
+      importH = gridH.filter(function(e){return parseFloat(e.state)>0;});
+      exportH = gridH.map(function(e){var v=parseFloat(e.state)||0; return v<0?{...e,state:String(-v)}:{...e,state:'0'};});
+    }
 
     function toBuckets(arr){
       var m={};
@@ -1368,9 +1382,14 @@ async function loadActualEconomy(){
       // Cap outliers
       impW = Math.min(impW, 25000);
       expW = Math.min(expW, 25000);
-      var cost   = (impW/1000)*0.25*buyKr;
-      var income = (expW/1000)*0.25*selKr;
-      actualMap[parseInt(t)] = income - cost; // positive = net income
+      // Use nordpool price if mpc price not available
+      var tInt = parseInt(t);
+      var nordOre = nordPriceMap[tInt] || nordPriceMap[Math.round(tInt/3600000)*3600000] || 0;
+      var effectiveBuy  = buyKr  > 0 ? buyKr  : nordOre/100;
+      var effectiveSell = selKr  > 0 ? selKr  : nordOre * 0.5 / 100; // estimate sell ~50% of spot
+      var cost   = (impW/1000)*0.25*effectiveBuy;
+      var income = (expW/1000)*0.25*effectiveSell;
+      actualMap[tInt] = income - cost; // positive = net income
     });
     return actualMap;
   }catch(e){
