@@ -360,7 +360,8 @@ document.getElementById('config-save').addEventListener('click',function(){
   localStorage.setItem('ha_worker',WORKER_URL);localStorage.setItem('ha_nordpool',NORDPOOL);
   document.getElementById('config-overlay').style.display='none';
   document.getElementById('app').style.display='block';
-  loadData();startLive();startLive();
+  loadData();
+  setTimeout(startLive, 500);
 });
 function openSettings(){fillConfig();document.getElementById('config-overlay').style.display='flex';}
 if(HA_URL&&HA_TOKEN){document.getElementById('config-overlay').style.display='none';document.getElementById('app').style.display='block';}
@@ -998,6 +999,9 @@ function computeChargingWindow(tableRows, chartData) {
 var _liveT = null;
 
 async function loadLiveData() {
+  // If app not visible yet, don't run
+  var appEl = document.getElementById('app');
+  if (!appEl || appEl.style.display === 'none' || appEl.style.display === '') return;
   var log = [];
   try {
     log.push('start');
@@ -1191,7 +1195,13 @@ function drawSparkline(todayOre, currentOre, avgOre) {
   if (!todayOre || !todayOre.length) return;
 
   // Use offsetWidth of parent since canvas may not have width set yet
-  var W = canvas.parentElement ? canvas.parentElement.offsetWidth - 40 : 220;
+  // Request animation frame to ensure layout is complete
+  var W = canvas.offsetWidth || (canvas.parentElement ? canvas.parentElement.offsetWidth - 40 : 0);
+  if (W < 10) { 
+    // Layout not ready yet, retry after render
+    requestAnimationFrame(function(){ drawSparkline(todayOre, currentOre, avgOre); });
+    return;
+  }
   W = Math.max(W, 100);
   var H = 44;
   canvas.width  = W;
@@ -1347,7 +1357,17 @@ function drawFlowLines(pvW, loadW, battW, gridW, evW, battCharging, battDischarg
 
 function startLive() {
   if (_liveT) clearInterval(_liveT);
-  loadLiveData();
+  // Immediately show that live is attempting to load
+  var rel = document.getElementById('tc-price-rel');
+  if (rel) { rel.textContent = 'Ansluter...'; rel.style.color = '#94a3b8'; }
+  // Test connectivity with a single known sensor
+  haFetch('/api/states/sensor.mpc_general_price').then(function(r){
+    if (rel) { rel.textContent = 'Test OK: ' + Math.round(parseFloat(r.state)*100) + ' öre'; rel.style.color = '#22c55e'; }
+    loadLiveData();
+  }).catch(function(e){
+    if (rel) { rel.textContent = 'Anslutningsfel: ' + e.message; rel.style.color = '#f87171'; }
+    loadLiveData();
+  });
   _liveT = setInterval(loadLiveData, 15000);
 }
 
@@ -1382,12 +1402,15 @@ async function loadActualEconomy(nordPriceMap){
   nordPriceMap = nordPriceMap || {};
   try{
     // Fetch from midnight today to get full day history
+    // Use midnight LOCAL time (Sweden CEST = UTC+2)
+    // toISOString() gives UTC, which would be wrong
+    // Instead use local midnight directly
     var midnight=new Date();midnight.setHours(0,0,0,0);
-    var since=midnight.toISOString();
+    var since=midnight.toISOString(); // This is correct: JS Date handles timezone
     // Use Sigenergy grid sensors: grid_import_power (pos=importing) and grid_export_power (pos=exporting)
     // Fall back to mpc sensors if Sigenergy not available
     var hist=await haFetch('/api/history/period/'+since
-      +'?filter_entity_id=sensor.sigen_plant_grid_import_power,sensor.sigen_plant_grid_export_power,sensor.sigen_plant_grid_active_power,sensor.mpc_general_price,sensor.mpc_feed_in_price&minimal_response=true');
+      +'?filter_entity_id=sensor.sigen_plant_grid_import_power,sensor.sigen_plant_grid_export_power,sensor.sigen_plant_grid_active_power,sensor.mpc_general_price,sensor.mpc_feed_in_price&minimal_response=true&significant_changes_only=false');
 
     // hist[0]=import W, hist[1]=export W, hist[2]=grid_active, hist[3]=buyKr, hist[4]=sellKr
     var importH=hist[0]||[], exportH=hist[1]||[], gridH=hist[2]||[], buyH=hist[3]||[], sellH=hist[4]||[];
@@ -1427,7 +1450,13 @@ async function loadActualEconomy(nordPriceMap){
       expW = Math.min(expW, 25000);
       // Use nordpool price if mpc price not available
       var tInt = parseInt(t);
-      var nordOre = nordPriceMap[tInt] || nordPriceMap[Math.round(tInt/3600000)*3600000] || 0;
+      // Nordpool is hourly - find the hour containing this 15-min slot
+      var hourT = Math.floor(tInt/3600000)*3600000;
+      var nordOre = nordPriceMap[hourT]
+        || nordPriceMap[hourT + 900000]   // try +15min
+        || nordPriceMap[hourT + 1800000]  // try +30min
+        || nordPriceMap[hourT + 2700000]  // try +45min
+        || 0;
       var effectiveBuy  = buyKr  > 0 ? buyKr  : nordOre/100;
       var effectiveSell = selKr  > 0 ? selKr  : nordOre * 0.5 / 100; // estimate sell ~50% of spot
       var cost   = (impW/1000)*0.25*effectiveBuy;
@@ -1442,7 +1471,11 @@ async function loadActualEconomy(nordPriceMap){
 }
 
 setInterval(loadData,15*60*1000);
-if(HA_URL&&HA_TOKEN){loadData();}
+if(HA_URL&&HA_TOKEN){
+  loadData();
+  // Small delay ensures app div display:block is rendered before startLive
+  setTimeout(startLive, 500);
+}
 </script>
 </body>
 </html>
