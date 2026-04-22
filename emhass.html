@@ -1138,17 +1138,26 @@ async function loadLiveData() {
     setText('tc-imp', impKwh > 0 ? impKwh.toFixed(1) : '0.0');
     setText('tc-exp', expKwh > 0 ? expKwh.toFixed(1) : '0.0');
     // Show HA template sensor data if available
-    var haNetVal = parseFloat(haNetCost && haNetCost.state);
-    var haSavedVal = parseFloat(haSaved && haSaved.state);
-    if (!isNaN(haNetVal) && haNetCost.state !== 'unavailable') {
-      // Update "Hittills idag" with actual HA-calculated value
-      var econCard = document.querySelector('.econ-card');
-      var soFarEl = document.querySelector('[data-econ="sofar"] .econ-val');
-      if (soFarEl) {
-        soFarEl.textContent = (haNetVal >= 0 ? '+' : '') + haNetVal.toFixed(2) + ' kr';
-        soFarEl.style.color = haNetVal >= 0 ? 'var(--green)' : 'var(--red)';
+    // ── HA Template sensors → update UI directly ──────────
+    var haNetVal  = parseFloat(haNetCost  && haNetCost.state);
+    var haSavedVal= parseFloat(haSaved    && haSaved.state);
+    var haSelfVal = parseFloat(haSelfSuf  && haSelfSuf.state);
+
+    // Update "Hittills idag" econ card with actual HA value
+    if (!isNaN(haNetVal) && haNetCost.state !== 'unavailable' && haNetCost.state !== 'unknown') {
+      var sfEl = document.getElementById('econ-sf');
+      if (sfEl) {
+        sfEl.textContent = (haNetVal >= 0 ? '+' : '') + haNetVal.toFixed(2) + ' kr';
+        sfEl.style.color = haNetVal >= 0 ? 'var(--green)' : '#f87171';
       }
+      // Also update sub-label to show it's actual
+      var sfSub = document.getElementById('econ-sf-sub');
+      if (sfSub) sfSub.textContent = 'faktisk nettointäkt idag';
     }
+
+    // Store HA net cost for actual economy map (use it per-quarter via attribution)
+    window._haNetCostToday = isNaN(haNetVal) ? null : haNetVal;
+    window._haSavedToday   = isNaN(haSavedVal) ? null : haSavedVal;
 
     // ── Power Flow nodes ─────────────────────────────────────
     // Sigenergy battery: pos=charging, neg=discharging
@@ -1285,28 +1294,38 @@ function drawFlowLines(pvW, loadW, battW, gridW, evW,
   var svg = document.getElementById('pf-svg');
   if (!svg) return;
 
-  // Use the pf-flow-outer as reference frame (it's position:relative,
-  // the SVG is position:absolute inside it)
-  var container = svg.parentElement;   // = pf-flow-outer div
-  var cRect     = container.getBoundingClientRect();
+  // Reference: pf-flow-outer (parent of both pf-grid-el and svg)
+  var container = svg.parentElement;
+  if (!container) return;
 
-  if (!cRect.width || !cRect.height) return; // layout not ready
+  // Force container to be at least as tall as the grid content
+  var gridEl = document.getElementById('pf-grid-el');
+  if (gridEl) container.style.minHeight = (gridEl.offsetHeight + 40) + 'px';
 
-  // Size SVG to match container exactly
-  svg.setAttribute('width',   cRect.width);
-  svg.setAttribute('height',  cRect.height);
-  svg.setAttribute('viewBox', '0 0 ' + cRect.width + ' ' + cRect.height);
+  var cRect = container.getBoundingClientRect();
+  if (!cRect.width || cRect.width < 50) return; // not rendered yet
+
+  var svgW = cRect.width;
+  var svgH = Math.max(cRect.height, gridEl ? gridEl.offsetHeight + 40 : 300);
+
+  svg.style.width  = svgW + 'px';
+  svg.style.height = svgH + 'px';
+  svg.setAttribute('width',   svgW);
+  svg.setAttribute('height',  svgH);
+  svg.setAttribute('viewBox', '0 0 ' + svgW + ' ' + svgH);
 
   // Get center of a node relative to container top-left
   function center(id) {
     var el = document.getElementById(id);
-    if (!el || el.offsetParent === null) return null;
+    if (!el) return null;
+    // Check visibility via display, not offsetParent (which fails for position:absolute parents)
+    if (el.style.display === 'none') return null;
     var r = el.getBoundingClientRect();
-    if (!r.width) return null;
+    if (!r.width || !r.height) return null;
     return {
       x: r.left - cRect.left + r.width  / 2,
       y: r.top  - cRect.top  + r.height / 2,
-      r: r.width * 0.45,   // slightly inside the border
+      r: r.width * 0.42,
     };
   }
 
@@ -1424,73 +1443,74 @@ async function startCharging(){
 // Fetch actual grid transactions for past 2h from HA history
 async function loadActualEconomy(nordPriceMap){
   nordPriceMap = nordPriceMap || {};
-  try{
-    // Fetch from midnight today to get full day history
-    // Use midnight LOCAL time (Sweden CEST = UTC+2)
-    // toISOString() gives UTC, which would be wrong
-    // Instead use local midnight directly
-    var midnight=new Date();midnight.setHours(0,0,0,0);
-    var since=midnight.toISOString(); // This is correct: JS Date handles timezone
-    // Use Sigenergy grid sensors: grid_import_power (pos=importing) and grid_export_power (pos=exporting)
-    // Fall back to mpc sensors if Sigenergy not available
-    var hist=await haFetch('/api/history/period/'+since
-      +'?filter_entity_id=sensor.sigen_plant_grid_active_power,sensor.mpc_general_price,sensor.mpc_feed_in_price&minimal_response=true&significant_changes_only=false');
+  try {
+    // Fetch grid_active_power history from midnight
+    var midnight = new Date(); midnight.setHours(0,0,0,0);
+    var since = midnight.toISOString();
 
-    // hist[0]=grid_active (pos=import, neg=export), hist[1]=buyKr, hist[2]=sellKr
-    var gridH=hist[0]||[], buyH=hist[1]||[], sellH=hist[2]||[];
+    var hist = await haFetch(
+      '/api/history/period/' + since
+      + '?filter_entity_id=sensor.sigen_plant_grid_active_power'
+      + ',sensor.mpc_general_price,sensor.mpc_feed_in_price'
+      + '&minimal_response=true&significant_changes_only=false'
+    );
 
-    function toBuckets(arr){
-      var m={};
-      arr.forEach(function(e){
-        var t=Math.round(new Date(e.last_changed||e.last_updated).getTime()/900000)*900000;
-        if(!m[t]) m[t]=[];
-        m[t].push(parseFloat(e.state)||0);
+    var gridH = hist[0] || [];
+    var buyH  = hist[1] || [];
+    var sellH = hist[2] || [];
+
+    function toBuckets(arr) {
+      var m = {};
+      arr.forEach(function(e) {
+        var t = Math.floor(new Date(e.last_changed || e.last_updated).getTime() / 900000) * 900000;
+        if (!m[t]) m[t] = [];
+        var v = parseFloat(e.state);
+        if (!isNaN(v)) m[t].push(v);
       });
       return m;
     }
-    function avg(arr){return arr.reduce(function(a,b){return a+b;},0)/arr.length;}
+    function avg(arr) { return arr.length ? arr.reduce(function(a,b){return a+b;},0)/arr.length : 0; }
 
     var gridB = toBuckets(gridH);
     var buyB  = toBuckets(buyH);
     var sellB = toBuckets(sellH);
 
-    var actualMap={};
-    var allT = new Set(Object.keys(gridB));
-    allT.forEach(function(t){
-      var gW    = gridB[t] ? avg(gridB[t]) : 0; // pos=import, neg=export
-      var impW  = Math.max(0,  gW);
-      var expW  = Math.max(0, -gW);
-      var buyKr = buyB[t]  ? avg(buyB[t])  : 0;
-      var selKr = sellB[t] ? avg(sellB[t]) : 0;
-      // Cap outliers
-      impW = Math.min(impW, 25000);
-      expW = Math.min(expW, 25000);
-      // Use nordpool price if mpc price not available
+    var actualMap = {};
+    Object.keys(gridB).forEach(function(t) {
       var tInt = parseInt(t);
-      // Nordpool is hourly - find the hour containing this 15-min slot
-      var hourT = Math.floor(tInt/3600000)*3600000;
+      var gW   = avg(gridB[t]);      // pos=import, neg=export
+      var impW = Math.max(0,  gW);
+      var expW = Math.max(0, -gW);
+
+      // Price: try mpc history first, then Nordpool hourly
+      var buyKr  = buyB[t]  ? avg(buyB[t])  : 0;
+      var selKr  = sellB[t] ? avg(sellB[t]) : 0;
+
+      var hourT  = Math.floor(tInt / 3600000) * 3600000;
       var nordOre = nordPriceMap[hourT]
-        || nordPriceMap[hourT + 900000]   // try +15min
-        || nordPriceMap[hourT + 1800000]  // try +30min
-        || nordPriceMap[hourT + 2700000]  // try +45min
+        || nordPriceMap[hourT + 900000]
+        || nordPriceMap[hourT + 1800000]
+        || nordPriceMap[hourT + 2700000]
         || 0;
-      var effectiveBuy  = buyKr  > 0 ? buyKr  : nordOre/100;
-      var effectiveSell = selKr  > 0 ? selKr  : nordOre * 0.85 / 100; // fallback: ~85% of spot
-      var cost   = (impW/1000)*0.25*effectiveBuy;
-      var income = (expW/1000)*0.25*effectiveSell;
-      actualMap[tInt] = income - cost; // positive = net income
+
+      if (buyKr  === 0 && nordOre > 0) buyKr  = nordOre / 100;
+      if (selKr  === 0 && nordOre > 0) selKr  = nordOre * 0.85 / 100;
+
+      var cost   = (impW / 1000) * 0.25 * buyKr;
+      var income = (expW / 1000) * 0.25 * selKr;
+      actualMap[tInt] = income - cost;
     });
+
     return actualMap;
-  }catch(e){
-    console.warn('Actual economy fetch failed:',e);
+  } catch(e) {
+    console.warn('[ActualEcon]', e);
     return {};
   }
 }
 
-setInterval(loadData,15*60*1000);
+setInterval(loadData, 15*60*1000);
 if(HA_URL&&HA_TOKEN){
   loadData();
-  // Small delay ensures app div display:block is rendered before startLive
   setTimeout(startLive, 500);
 }
 </script>
