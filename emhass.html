@@ -393,7 +393,7 @@ function classify(batt,pv,grid,buyKr,sellKr,avgBuyKr){
   if(exporting) return{key:'export',label:'Exportera',color:'#2dd4bf'};
   if(pv>200&&Math.abs(grid)<100) return{key:'cover_house',label:'T\u00e4ck huset',color:'#fb923c'};
   if(buyKr>avgBuyKr*1.15) return{key:'wait',label:'V\u00e4nta',color:'#94a3b8'};
-  return{key:'observe',label:'Observera',color:'#64748b'};
+  return{key:'observe',label:'Observera',color:'#94a3b8'};
 }
 
 // Economy per 15-min slot - verified formula
@@ -873,9 +873,13 @@ function renderTable(histRows,forecastRows,avgOre,actualMap){
     var battColor=r.batt<-50?'#22c55e':r.batt>50?'#f87171':'#64748b';
     var buyColor=r.buyOre>avgOre*1.1?'#f87171':r.buyOre>0&&r.buyOre<avgOre*0.9?'#22c55e':'#e2e8f0';
     var faktVal=actualMap[r.t];
-    var faktCell=faktVal!==undefined&&r.t<now
-      ?'<span style="color:'+(faktVal>=0?'#22c55e':'#f87171')+'">'+(faktVal>=0?'+':'')+faktVal.toFixed(2)+' kr</span>'
-      :'–';
+    var faktCell='–';
+    if(faktVal!==undefined&&r.t<now){
+      var fRounded=Math.round(faktVal*100)/100;
+      var fCol=fRounded>0.005?'#22c55e':fRounded<-0.005?'#f87171':'#94a3b8';
+      var fSign=fRounded>0.005?'+':'';
+      faktCell='<span style="color:'+fCol+'">'+fSign+faktVal.toFixed(2)+' kr</span>';
+    }
     var econCell='–';
     if(r.econKr!==0){
       var col=r.econKr>=0?'#22c55e':'#f87171';
@@ -1016,9 +1020,14 @@ async function loadLiveData() {
     var loadS  = await safe('/api/states/sensor.sigen_plant_consumed_power');
     var battS  = await safe('/api/states/sensor.sigen_plant_battery_power');
     var socS   = await safe('/api/states/sensor.sigen_plant_battery_state_of_charge');
+    var gridAS = await safe('/api/states/sensor.sigen_plant_grid_active_power');
     var impS   = await safe('/api/states/sensor.sigen_plant_grid_import_power');
     var expS   = await safe('/api/states/sensor.sigen_plant_grid_export_power');
-    var pvKwhS = await safe('/api/states/sensor.sigen_plant_daily_pv_energy');
+    var pvKwhS   = await safe('/api/states/sensor.sigen_plant_daily_third_party_inverter_energy');
+    // HA template sensors (optional - if installed they give richer data)
+    var haNetCost  = await safe('/api/states/sensor.emhass_faktisk_daglig_nettokostnad');
+    var haSaved    = await safe('/api/states/sensor.emhass_sparad_kostnad_idag');
+    var haSelfSuf  = await safe('/api/states/sensor.emhass_sjalvforsorjning_idag');
     var bChgS  = await safe('/api/states/sensor.sigen_plant_daily_battery_charge_energy');
     var bDisS  = await safe('/api/states/sensor.sigen_plant_daily_battery_discharge_energy');
     var impKwhS= await safe('/api/states/sensor.sigen_plant_daily_grid_import_energy');
@@ -1042,10 +1051,15 @@ async function loadLiveData() {
     var battW  = num(battS);
     var socPct = num(socS);
     // Grid: use import/export separately (both positive)
+    var gridAct = num(gridAS); // pos=buying, neg=selling (Sigenergy convention)
     var impW   = num(impS);
     var expW   = num(expS);
-    // Net grid: positive = importing, negative = exporting
-    var gridW  = impW > 0 ? impW : -expW;
+    // Use grid_active_power as primary (single net sensor)
+    // Fallback: derive from import/export sensors
+    var gridW  = gridAct !== 0 ? gridAct : (impW > 0 ? impW : -expW);
+    // Recalculate import/export from gridW for flow lines
+    var effImpW = Math.max(0,  gridW);   // positive part = importing
+    var effExpW = Math.max(0, -gridW);   // negative part = exporting
     var pvKwh  = num(pvKwhS);
     var bChg   = num(bChgS);
     var bDis   = num(bDisS);
@@ -1094,7 +1108,7 @@ async function loadLiveData() {
     drawSparkline(todayOre, buyOre, avgOre);
 
     // ── Sol-kort ─────────────────────────────────────────────
-    setText('tc-sol-kwh', pvKwh > 0 ? pvKwh.toFixed(1) : '\u2013');
+    setText('tc-sol-kwh', pvKwh >= 0 ? pvKwh.toFixed(1) : '\u2013');
     setText('tc-pv-w',    Math.round(pvW) || '0');
     setText('tc-soc',     socPct > 0 ? socPct.toFixed(1) + ' %' : '\u2013');
     setText('tc-bchg',    bChg  > 0 ? bChg.toFixed(1)  : '\u2013');
@@ -1108,8 +1122,8 @@ async function loadLiveData() {
     var badge = document.getElementById('tc-badge');
     if (badge) {
       badge.textContent = dec.label;
-      badge.style.cssText = 'display:inline-block;padding:3px 12px;border-radius:20px;font-size:.82rem;font-weight:600;'
-        + 'background:' + dec.color + '22;color:' + dec.color + ';border:1px solid ' + dec.color + '44;margin-bottom:8px';
+      badge.style.cssText = 'display:inline-block;padding:5px 14px;border-radius:20px;font-size:.88rem;font-weight:700;'
+        + 'background:' + dec.color + '33;color:' + dec.color + ';border:2px solid ' + dec.color + '88;margin-bottom:8px';
     }
     var mainW = Math.abs(battW) > 50 ? Math.abs(battW) : Math.abs(gridW) > 50 ? Math.abs(gridW) : pvW;
     var decW = document.getElementById('tc-dec-w');
@@ -1123,6 +1137,18 @@ async function loadLiveData() {
     setText('tc-dec-sub', descTxt);
     setText('tc-imp', impKwh > 0 ? impKwh.toFixed(1) : '0.0');
     setText('tc-exp', expKwh > 0 ? expKwh.toFixed(1) : '0.0');
+    // Show HA template sensor data if available
+    var haNetVal = parseFloat(haNetCost && haNetCost.state);
+    var haSavedVal = parseFloat(haSaved && haSaved.state);
+    if (!isNaN(haNetVal) && haNetCost.state !== 'unavailable') {
+      // Update "Hittills idag" with actual HA-calculated value
+      var econCard = document.querySelector('.econ-card');
+      var soFarEl = document.querySelector('[data-econ="sofar"] .econ-val');
+      if (soFarEl) {
+        soFarEl.textContent = (haNetVal >= 0 ? '+' : '') + haNetVal.toFixed(2) + ' kr';
+        soFarEl.style.color = haNetVal >= 0 ? 'var(--green)' : 'var(--red)';
+      }
+    }
 
     // ── Power Flow nodes ─────────────────────────────────────
     // Sigenergy battery: pos=charging, neg=discharging
@@ -1137,7 +1163,7 @@ async function loadLiveData() {
     setText('pfw-sol',   Math.round(pvW)   + ' W');
     setText('pfw-house', Math.round(loadW) + ' W');
     setText('pfw-batt',  battDir + Math.abs(Math.round(battW)) + ' W');
-    setText('pfw-grid',  gridDir + Math.abs(Math.round(impW > 0 ? impW : expW)) + ' W');
+    setText('pfw-grid',  gridDir + Math.abs(Math.round(gridW)) + ' W');
     setText('pfl-batt',  'Batteri ' + socPct.toFixed(0) + '%');
     setText('pfl-grid',  gridImporting ? 'N\u00e4t (k\u00f6p)' : gridExporting ? 'N\u00e4t (s\u00e4lj)' : 'N\u00e4t');
 
@@ -1168,9 +1194,13 @@ async function loadLiveData() {
     }
 
     // Draw flow lines after layout settles
+    var battCharging2    = battW > 50;
+    var battDischarging2 = battW < -50;
+    var gridImporting2   = gridW > 50;
+    var gridExporting2   = gridW < -50;
     setTimeout(function() {
       drawFlowLines(pvW, loadW, battW, gridW, evW,
-                    battCharging, battDischarging, gridImporting, gridExporting);
+                    battCharging2, battDischarging2, gridImporting2, gridExporting2);
     }, 150);
 
     log.push('done');
