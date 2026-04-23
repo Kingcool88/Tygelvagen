@@ -701,16 +701,29 @@ async function loadData(){
   document.getElementById('chart-error').style.display='none';
   document.getElementById('chart').style.display='none';
   try{
+    
+    // --- NYHET: Säker hämtning som förhindrar 404-kraschar ---
+    async function safeData(path) {
+      try { return await haFetch(path); }
+      catch(e) { 
+        console.warn('Varning: Kunde inte hämta ' + path);
+        // Om sensorn saknas, returnera ett tomt format så koden kan fortsätta
+        return { state: '0', attributes: {} }; 
+      }
+    }
+
+    // Använd safeData istället för haFetch direkt
     var results=await Promise.all([
-      haFetch('/api/states/sensor.mpc_pv_power'),
-      haFetch('/api/states/sensor.mpc_load_power'),
-      haFetch('/api/states/sensor.mpc_batt_power'),
-      haFetch('/api/states/sensor.mpc_batt_soc'),
-      haFetch('/api/states/sensor.mpc_grid_power'),
-      haFetch('/api/states/sensor.mpc_general_price'),
-      haFetch('/api/states/sensor.mpc_feed_in_price'),
-      NORDPOOL?haFetch('/api/states/'+NORDPOOL).catch(function(){return null;}):Promise.resolve(null),
+      safeData('/api/states/sensor.mpc_pv_power'),
+      safeData('/api/states/sensor.mpc_load_power'),
+      safeData('/api/states/sensor.mpc_batt_power'),
+      safeData('/api/states/sensor.mpc_batt_soc'),
+      safeData('/api/states/sensor.mpc_grid_power'),
+      safeData('/api/states/sensor.mpc_general_price'),
+      safeData('/api/states/sensor.mpc_feed_in_price'),
+      NORDPOOL ? safeData('/api/states/'+NORDPOOL) : Promise.resolve(null),
     ]);
+    
     var pvS=results[0],loadS=results[1],battS=results[2],socS=results[3];
     var gridS=results[4],buyS=results[5],sellS=results[6],nordS=results[7];
 
@@ -809,9 +822,11 @@ async function loadData(){
       });
     }catch(e){}
 
+    // --- NYHET: tableRows: tableRows sparar datan så live-uppdateringen kan använda den ---
     allData={solarCharge:solarCharge,gridCharge:gridCharge,discharge:discharge,
              export_:export_,pvLine:pvLine,loadLine:loadLine,socLine:socLine,
-             gridLine:gridLine,nordBars:nordBars,sellLine:sellLine};
+             gridLine:gridLine,nordBars:nordBars,sellLine:sellLine, 
+             tableRows:tableRows};
 
     document.getElementById('chart-loading').style.display='none';
     document.getElementById('chart').style.display='block';
