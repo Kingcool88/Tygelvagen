@@ -469,35 +469,23 @@ function renderChart(d,spanH){
   },30000);
 }
 
-function updateEconUI(tableRows,avgOre){
-  var now=Date.now();
-  var midnight=new Date();midnight.setHours(0,0,0,0);
-  var midT=midnight.getTime();
-  var soFar=0,forecast=0,hasFc=false;
-  var endOfDay=new Date(midT);endOfDay.setHours(23,59,59,999);var endT=endOfDay.getTime();
-  tableRows.forEach(function(r){
-    if(r.t<midT||r.t>endT||r.isHistory) return; // only today 00:00-23:59
-    hasFc=true;
-    if(r.t<=now) soFar+=r.econKr;
-    else forecast+=r.econKr;
+function updateEconUI(tableRows, avgOre) {
+  var now = Date.now();
+  var soFar = window._haNetCostToday || 0; // Använd det faktiska värdet från HA-sensorn
+  var forecast = 0;
+
+  tableRows.forEach(function(r) {
+    // Addera bara prognos för framtida kvartar (efter nu)
+    if (r.t > now && !r.isHistory) {
+      forecast += r.econKr;
+    }
   });
-  var total=soFar+forecast;
-  function fmt(kr){
-    var sign=kr>=0?'+':'';
-    return sign+Math.abs(kr).toFixed(2)+' kr';
-  }
-  var sfEl=document.getElementById('econ-sf');
-  sfEl.textContent=hasFc?fmt(soFar):'\u2013';
-  document.getElementById('econ-sf-sub').textContent=(soFar>=0?'nettovinst hittills (inkl. sparad sol)':'nettokostnad hittills');
-  document.getElementById('econ-sf-card').className='econ-card '+(soFar>=0?'econ-positive':'econ-negative');
-  var fcEl=document.getElementById('econ-fc');
-  fcEl.textContent=hasFc?fmt(forecast):'\u2013';
-  document.getElementById('econ-fc-sub').textContent=(forecast>=0?'ber\u00e4knad vinst':'ber\u00e4knad kostnad');
-  document.getElementById('econ-fc-card').className='econ-card '+(forecast>=0?'econ-positive':'econ-negative');
-  var totEl=document.getElementById('econ-tot');
-  totEl.textContent=hasFc?fmt(total):'\u2013';
-  document.getElementById('econ-tot-sub').textContent=(total>=0?'ber\u00e4knad nettointäkt':'ber\u00e4knad nettokostnad');
-  document.getElementById('econ-tot-card').className='econ-card '+(total>=0?'econ-positive':'econ-negative');
+
+  var total = soFar + forecast;
+
+  document.getElementById('econ-sf').textContent = (soFar >= 0 ? '+' : '') + soFar.toFixed(2) + ' kr';
+  document.getElementById('econ-fc').textContent = (forecast >= 0 ? '+' : '') + forecast.toFixed(2) + ' kr';
+  document.getElementById('econ-tot').textContent = (total >= 0 ? '+' : '') + total.toFixed(2) + ' kr';
 }
 
 // Load EV data + charging plan (all Swedish)
@@ -995,7 +983,8 @@ async function loadLiveData() {
     var loadW  = num(loadS);
     // Sigenergy battery_power: positive = charging, negative = discharging
     var battW  = num(battS);
-    var socPct = numSoc(socS);
+    var socPct = parseFloat(socS && socS.state) || 0; // Ingen multiplikation med 1000 här!
+	_pfData.socPct = socPct;
     // Grid: use import/export separately (both positive)
     var gridAct = num(gridAS); // pos=buying, neg=selling (Sigenergy convention)
     var impW   = num(impS);
@@ -1456,27 +1445,19 @@ async function loadActualEconomy(nordPriceMap){
     var actualMap = {};
     Object.keys(gridB).forEach(function(t) {
       var tInt = parseInt(t);
-      var gW   = avg(gridB[t]);      // pos=import, neg=export
-      var impW = Math.max(0,  gW);
-      var expW = Math.max(0, -gW);
+      var gKW  = avg(gridB[t]);      // Sigenergy rapporterar kW (t.ex. 1.2)
+      var impKW = Math.max(0,  gKW);
+      var expKW = Math.max(0, -gKW);
 
-      // Use Nordpool as primary price source (most reliable)
-      // nordPriceMap keys: Math.round(h.start/900000)*900000 (15-min buckets from Nordpool hours)
-      // Try current slot, then hourly boundaries
       var hourT   = Math.floor(tInt / 3600000) * 3600000;
-      var nordOre = nordPriceMap[tInt]
-        || nordPriceMap[hourT]
-        || nordPriceMap[hourT + 900000]
-        || nordPriceMap[hourT + 1800000]
-        || nordPriceMap[hourT + 2700000]
-        || 0;
+      var nordOre = nordPriceMap[tInt] || nordPriceMap[hourT] || 0;
       
-      // mpc prices as secondary (they include taxes/fees which nordpool doesn't)
       var buyKr  = buyB[t]  ? avg(buyB[t])  : (nordOre > 0 ? nordOre / 100 : 0);
       var selKr  = sellB[t] ? avg(sellB[t]) : (nordOre > 0 ? nordOre * 0.85 / 100 : 0);
 
-      var cost   = (impW / 1000) * 0.25 * buyKr;
-      var income = (expW / 1000) * 0.25 * selKr;
+      // Eftersom impKW redan är i kW, tar vi bort "/ 1000"
+      var cost   = impKW * 0.25 * buyKr; 
+      var income = expKW * 0.25 * selKr;
       actualMap[tInt] = income - cost;
     });
 
