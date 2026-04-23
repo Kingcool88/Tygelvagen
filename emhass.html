@@ -204,47 +204,8 @@ td.mono{font-family:'DM Mono',monospace}
       <span class="card-title">Power Flow</span>
       <span class="pf-live"><span class="pf-dot"></span>Live &ndash; uppdateras var 15s</span>
     </div>
-    <div class="pf-flow-outer" style="position:relative;min-height:280px">
-      <div class="pf-grid" id="pf-grid-el" style="position:relative;z-index:2">
-        <!-- Sol (top center) -->
-        <div class="pf-n pf-sol" id="pfn-sol">
-          <div class="pf-n-w" id="pfw-sol">&#8211;</div>
-          <div class="pf-n-ico">&#9728;&#65039;</div>
-          <div class="pf-n-lbl">Sol</div>
-        </div>
-        <!-- Batteri (middle left) -->
-        <div class="pf-n pf-batt" id="pfn-batt">
-          <div class="pf-n-w" id="pfw-batt">&#8211;</div>
-          <div class="pf-n-ico">&#128267;</div>
-          <div class="pf-n-lbl" id="pfl-batt">Batteri</div>
-        </div>
-        <!-- Hus (middle center) -->
-        <div class="pf-n pf-house" id="pfn-house">
-          <div class="pf-n-w" id="pfw-house">&#8211;</div>
-          <div class="pf-n-ico">&#127968;</div>
-          <div class="pf-n-lbl">Hus</div>
-        </div>
-        <!-- N&#228;t (middle right) -->
-        <div class="pf-n pf-grid-n" id="pfn-grid">
-          <div class="pf-n-w" id="pfw-grid">&#8211;</div>
-          <div class="pf-n-ico">&#128268;</div>
-          <div class="pf-n-lbl" id="pfl-grid">N&#228;t</div>
-        </div>
-        <!-- EV (bottom left, hidden unless charging) -->
-        <div class="pf-n pf-ev" id="pfn-ev" style="display:none">
-          <div class="pf-n-w" id="pfw-ev">&#8211;</div>
-          <div class="pf-n-ico">&#128663;</div>
-          <div class="pf-n-lbl">Bil</div>
-        </div>
-        <!-- Beslut pill (bottom center) -->
-        <div class="pf-dec-wrap">
-          <span class="pf-dec-pill" id="pf-dec">&#8211;</span>
-        </div>
-      </div>
-      <!-- SVG overlay — sits on top of grid via absolute positioning -->
-      <svg id="pf-svg" xmlns="http://www.w3.org/2000/svg"
-        style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible"></svg>
-    </div>
+    <!-- Single canvas handles both nodes and flow lines -->
+    <canvas id="pf-canvas" style="width:100%;display:block;border-radius:8px"></canvas>
   </div>
 
     <!-- Price stats -->
@@ -1166,51 +1127,24 @@ async function loadLiveData() {
     var gridImporting   = impW > 50;
     var gridExporting   = expW > 50;
 
-    var battDir = battCharging ? '\u25b2 ' : battDischarging ? '\u25bc ' : '';
-    var gridDir = gridImporting ? '\u25bc K\u00f6p ' : gridExporting ? '\u25b2 S\u00e4lj ' : '';
+    // Node text now handled by canvas renderer
 
-    setText('pfw-sol',   Math.round(pvW)   + ' W');
-    setText('pfw-house', Math.round(loadW) + ' W');
-    setText('pfw-batt',  battDir + Math.abs(Math.round(battW)) + ' W');
-    setText('pfw-grid',  gridDir + Math.abs(Math.round(gridW)) + ' W');
-    setText('pfl-batt',  'Batteri ' + socPct.toFixed(0) + '%');
-    setText('pfl-grid',  gridImporting ? 'N\u00e4t (k\u00f6p)' : gridExporting ? 'N\u00e4t (s\u00e4lj)' : 'N\u00e4t');
-
-    // Battery color by SOC
-    var bn = document.getElementById('pfn-batt');
-    if (bn) bn.style.background = socPct > 60
-      ? 'linear-gradient(135deg,#1e3a5f,#2563eb)'
-      : socPct > 30 ? 'linear-gradient(135deg,#78350f,#d97706)'
-      : 'linear-gradient(135deg,#7f1d1d,#dc2626)';
-
-    // Decision pill
-    var pill = document.getElementById('pf-dec');
-    if (pill) {
-      pill.textContent = '\u25cf ' + dec.label;
-      pill.style.cssText = 'padding:5px 16px;border-radius:20px;font-size:.8rem;font-weight:600;'
-        + 'background:' + dec.color + '22;color:' + dec.color + ';border:1px solid ' + dec.color + '44';
-    }
-
-    // EV node
-    var evNode = document.getElementById('pfn-ev');
-    if (evNode) {
-      if (evW > 100) {
-        evNode.style.display = 'flex';
-        setText('pfw-ev', Math.round(evW) + ' W');
-      } else {
-        evNode.style.display = 'none';
-      }
-    }
+    // Update canvas data
+    _pfData.socPct = socPct;
+    _pfData.dec    = dec;
 
     // Draw flow lines after layout settles
     var battCharging2    = battW > 5;     // Sigenergy: pos=charging
     var battDischarging2 = battW < -5;    // Sigenergy: neg=discharging
     var gridImporting2   = gridW > 10;    // pos=importing from grid
     var gridExporting2   = gridW < -10;   // neg=exporting to grid
-    setTimeout(function() {
+    // Draw flow lines — try immediately then retry to handle layout timing
+    function tryDraw() {
       drawFlowLines(pvW, loadW, battW, gridW, evW,
                     battCharging2, battDischarging2, gridImporting2, gridExporting2);
-    }, 150);
+    }
+    setTimeout(tryDraw, 200);
+    setTimeout(tryDraw, 800);  // retry in case layout wasn't ready
 
     log.push('done');
 
@@ -1288,118 +1222,177 @@ function drawSparkline(todayOre, currentOre, avgOre) {
   ctx.fillStyle = '#fbbf24'; ctx.fill();
 }
 
+// ── Canvas-based Power Flow renderer ──────────────────────
+var _pfAnim = null;  // animation frame id
+var _pfData = { pvW:0, loadW:0, battW:0, gridW:0, evW:0,
+                battCharging:false, battDischarging:false,
+                gridImporting:false, gridExporting:false,
+                socPct:0, dec:null };
+var _pfOffset = 0;  // dash animation offset
+
 function drawFlowLines(pvW, loadW, battW, gridW, evW,
                        battCharging, battDischarging, gridImporting, gridExporting) {
+  // Just update the data — animation loop handles rendering
+  _pfData = { pvW:pvW, loadW:loadW, battW:battW, gridW:gridW, evW:evW,
+              battCharging:battCharging, battDischarging:battDischarging,
+              gridImporting:gridImporting, gridExporting:gridExporting };
+}
 
-  var svg = document.getElementById('pf-svg');
-  if (!svg) return;
+function startPFCanvas() {
+  var canvas = document.getElementById('pf-canvas');
+  if (!canvas) return;
+  if (_pfAnim) cancelAnimationFrame(_pfAnim);
 
-  // Reference: pf-flow-outer (parent of both pf-grid-el and svg)
-  var container = svg.parentElement;
-  if (!container) return;
+  var lastT = 0;
+  function frame(t) {
+    _pfAnim = requestAnimationFrame(frame);
+    if (t - lastT < 50) return; // ~20fps
+    lastT = t;
+    _pfOffset = (_pfOffset + 1) % 19;
+    renderPF(canvas, _pfData, _pfOffset);
+  }
+  _pfAnim = requestAnimationFrame(frame);
+}
 
-  // Force container to be at least as tall as the grid content
-  var gridEl = document.getElementById('pf-grid-el');
-  if (gridEl) container.style.minHeight = (gridEl.offsetHeight + 40) + 'px';
+function renderPF(canvas, d, dashOffset) {
+  var dpr = window.devicePixelRatio || 1;
+  var W   = canvas.parentElement ? canvas.parentElement.offsetWidth - 40 : 600;
+  var H   = Math.round(W * 0.38);  // 38% aspect ratio
+  H = Math.max(H, 200);
 
-  var cRect = container.getBoundingClientRect();
-  if (!cRect.width || cRect.width < 50) return; // not rendered yet
-
-  var svgW = cRect.width;
-  var svgH = Math.max(cRect.height, gridEl ? gridEl.offsetHeight + 40 : 300);
-
-  svg.style.width  = svgW + 'px';
-  svg.style.height = svgH + 'px';
-  svg.setAttribute('width',   svgW);
-  svg.setAttribute('height',  svgH);
-  svg.setAttribute('viewBox', '0 0 ' + svgW + ' ' + svgH);
-
-  // Get center of a node relative to container top-left
-  function center(id) {
-    var el = document.getElementById(id);
-    if (!el) return null;
-    // Check visibility via display, not offsetParent (which fails for position:absolute parents)
-    if (el.style.display === 'none') return null;
-    var r = el.getBoundingClientRect();
-    if (!r.width || !r.height) return null;
-    return {
-      x: r.left - cRect.left + r.width  / 2,
-      y: r.top  - cRect.top  + r.height / 2,
-      r: r.width * 0.42,
-    };
+  if (canvas.width !== W * dpr) {
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
   }
 
-  var sol   = center('pfn-sol');
-  var house = center('pfn-house');
-  var batt  = center('pfn-batt');
-  var gridn = center('pfn-grid');
-  var evn   = center('pfn-ev');
+  var ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
 
-  // If core nodes not found, abort
-  if (!sol || !house || !batt || !gridn) {
-    svg.innerHTML = '';
-    return;
-  }
+  // Node layout: fixed grid positions
+  var nodeR = Math.min(48, W * 0.09);
+  var cx = W / 2;
+  var col1 = W * 0.18;
+  var col3 = W * 0.82;
+  var row1 = H * 0.22;
+  var row2 = H * 0.65;
+  var row3 = H * 0.92;
 
-  // Animated dashed line between two points on node perimeters
+  // Nodes: {x, y, icon, label, val, color}
+  var nodes = {
+    sol:   { x: cx,   y: row1, icon:'☀️',  lbl:'Sol',    val: Math.round(d.pvW)   + ' W', color:'#d97706' },
+    batt:  { x: col1, y: row2, icon:'🔋',  lbl: 'Batteri ' + (_pfData.socPct||0).toFixed(0) + '%',
+             val: (d.battW>5?'▲ ':d.battW<-5?'▼ ':'') + Math.abs(Math.round(d.battW)) + ' W',
+             color: (_pfData.socPct||0) > 60 ? '#2563eb' : (_pfData.socPct||0) > 30 ? '#d97706' : '#dc2626' },
+    house: { x: cx,   y: row2, icon:'🏠',  lbl:'Hus',    val: Math.round(d.loadW) + ' W', color:'#db2777' },
+    grid:  { x: col3, y: row2, icon:'🔌',  lbl: d.gridImporting ? 'Nät (köp)' : d.gridExporting ? 'Nät (sälj)' : 'Nät',
+             val: Math.abs(Math.round(d.gridW)) + ' W', color:'#4b5563' },
+  };
+
+  // Draw flow lines first (under nodes)
+  ctx.save();
+  ctx.setLineDash([12, 7]);
+  ctx.lineDashOffset = -dashOffset;
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+
   function flowLine(from, to, color, watts) {
+    if (!from || !to || Math.abs(watts) < 5) return;
     var dx = to.x - from.x, dy = to.y - from.y;
     var dist = Math.sqrt(dx*dx + dy*dy) || 1;
     var nx = dx/dist, ny = dy/dist;
-    var x1 = from.x + nx * from.r, y1 = from.y + ny * from.r;
-    var x2 = to.x   - nx * to.r,   y2 = to.y   - ny * to.r;
-
-    // Thickness proportional to power (min 2, max 7)
-    var w = Math.min(7, Math.max(2, Math.abs(watts) / 500));
-    // Speed: faster = more power (dur in seconds)
-    var dur = (Math.max(0.5, 2.2 - Math.abs(watts) / 2500)).toFixed(2);
-
-    return '<path d="M' + x1.toFixed(1) + ',' + y1.toFixed(1)
-      + ' L' + x2.toFixed(1) + ',' + y2.toFixed(1) + '"'
-      + ' stroke="' + color + '" stroke-width="' + w.toFixed(1) + '"'
-      + ' stroke-linecap="round" fill="none" opacity="0.9"'
-      + ' stroke-dasharray="12 7">'
-      + '<animate attributeName="stroke-dashoffset"'
-      + ' from="0" to="-19" dur="' + dur + 's" repeatCount="indefinite"/>'
-      + '</path>';
+    var x1 = from.x + nx * nodeR;
+    var y1 = from.y + ny * nodeR;
+    var x2 = to.x   - nx * nodeR;
+    var y2 = to.y   - ny * nodeR;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.min(6, Math.max(2, Math.abs(watts) / 500));
+    ctx.setLineDash([12, 7]);
+    ctx.lineDashOffset = -dashOffset;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    // Arrow tip
+    ctx.setLineDash([]);
+    ctx.fillStyle = color;
+    ctx.save();
+    ctx.translate(x2, y2);
+    ctx.rotate(Math.atan2(dy, dx));
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-10, -5);
+    ctx.lineTo(-10,  5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
-  var out = '';
+  if (d.pvW > 5)                         flowLine(nodes.sol,   nodes.house, '#fbbf24', d.pvW);
+  if (d.battCharging && d.pvW > 20)      flowLine(nodes.sol,   nodes.batt,  '#22c55e', Math.abs(d.battW));
+  if (d.battCharging && d.pvW <= 20)     flowLine(nodes.grid,  nodes.batt,  '#a78bfa', Math.abs(d.battW));
+  if (d.battDischarging)                 flowLine(nodes.batt,  nodes.house, '#60a5fa', Math.abs(d.battW));
+  if (d.gridImporting)                   flowLine(nodes.grid,  nodes.house, '#f87171', Math.abs(d.gridW));
+  if (d.gridExporting)                   flowLine(nodes.house, nodes.grid,  '#2dd4bf', Math.abs(d.gridW));
+  ctx.restore();
 
-  // Sol → Hus  (yellow, always when PV > 5W)
-  if (pvW > 5)
-    out += flowLine(sol, house, '#fbbf24', Math.max(pvW, 50));
+  // Draw nodes on top
+  function drawNode(n) {
+    // Circle background
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, nodeR, 0, Math.PI * 2);
+    ctx.fillStyle = n.color + '33';
+    ctx.fill();
+    ctx.strokeStyle = n.color + '99';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.stroke();
 
-  // Sol → Batteri  (green, charging from solar: battW > 0 in Sigenergy = charging)
-  if (battCharging && pvW > 20)
-    out += flowLine(sol, batt, '#22c55e', Math.max(Math.abs(battW), 50));
+    // Watts value
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold ' + Math.round(nodeR * 0.32) + 'px DM Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(n.val, n.x, n.y - nodeR * 0.18);
 
-  // Nät → Batteri  (purple, charging from grid)
-  if (battCharging && pvW <= 20)
-    out += flowLine(gridn, batt, '#a78bfa', Math.max(Math.abs(battW), 50));
+    // Emoji icon
+    ctx.font = Math.round(nodeR * 0.55) + 'px serif';
+    ctx.fillText(n.icon, n.x, n.y + nodeR * 0.18);
 
-  // Batteri → Hus  (blue, discharging: battW < 0 in Sigenergy = discharging)
-  if (battDischarging)
-    out += flowLine(batt, house, '#60a5fa', Math.max(Math.abs(battW), 50));
+    // Label below
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = Math.round(nodeR * 0.27) + 'px DM Sans, sans-serif';
+    ctx.fillText(n.lbl, n.x, n.y + nodeR + 14);
+  }
 
-  // Nät → Hus  (red, importing: gridW > 0)
-  if (gridImporting)
-    out += flowLine(gridn, house, '#f87171', Math.max(Math.abs(gridW), 50));
+  Object.values(nodes).forEach(drawNode);
 
-  // Hus → Nät  (teal, exporting: gridW < 0)
-  if (gridExporting)
-    out += flowLine(house, gridn, '#2dd4bf', Math.max(Math.abs(gridW), 50));
-
-  // Batteri → EV  (lime)
-  if (evn && evW > 100)
-    out += flowLine(batt, evn, '#4ade80', evW);
-
-  svg.innerHTML = out;
+  // Decision label at bottom center
+  if (_pfData.dec) {
+    ctx.fillStyle = _pfData.dec.color + '33';
+    ctx.strokeStyle = _pfData.dec.color + '88';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    var lbl = '● ' + _pfData.dec.label;
+    ctx.font = '600 13px DM Sans, sans-serif';
+    var tw = ctx.measureText(lbl).width + 28;
+    var lx = cx - tw/2, ly = row3 - 14;
+    ctx.beginPath();
+    ctx.roundRect(lx, ly, tw, 26, 13);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = _pfData.dec.color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(lbl, cx, ly + 13);
+  }
 }
 
 
 function startLive() {
   if (_liveT) clearInterval(_liveT);
+  startPFCanvas();  // Start canvas animation loop
   // Immediately show that live is attempting to load
   var rel = document.getElementById('tc-price-rel');
   if (rel) { rel.textContent = 'Ansluter...'; rel.style.color = '#94a3b8'; }
@@ -1482,25 +1475,37 @@ async function loadActualEconomy(nordPriceMap){
       var impW = Math.max(0,  gW);
       var expW = Math.max(0, -gW);
 
-      // Price: try mpc history first, then Nordpool hourly
-      var buyKr  = buyB[t]  ? avg(buyB[t])  : 0;
-      var selKr  = sellB[t] ? avg(sellB[t]) : 0;
-
-      var hourT  = Math.floor(tInt / 3600000) * 3600000;
-      var nordOre = nordPriceMap[hourT]
+      // Use Nordpool as primary price source (most reliable)
+      // nordPriceMap keys: Math.round(h.start/900000)*900000 (15-min buckets from Nordpool hours)
+      // Try current slot, then hourly boundaries
+      var hourT   = Math.floor(tInt / 3600000) * 3600000;
+      var nordOre = nordPriceMap[tInt]
+        || nordPriceMap[hourT]
         || nordPriceMap[hourT + 900000]
         || nordPriceMap[hourT + 1800000]
         || nordPriceMap[hourT + 2700000]
         || 0;
-
-      if (buyKr  === 0 && nordOre > 0) buyKr  = nordOre / 100;
-      if (selKr  === 0 && nordOre > 0) selKr  = nordOre * 0.85 / 100;
+      
+      // mpc prices as secondary (they include taxes/fees which nordpool doesn't)
+      var buyKr  = buyB[t]  ? avg(buyB[t])  : (nordOre > 0 ? nordOre / 100 : 0);
+      var selKr  = sellB[t] ? avg(sellB[t]) : (nordOre > 0 ? nordOre * 0.85 / 100 : 0);
 
       var cost   = (impW / 1000) * 0.25 * buyKr;
       var income = (expW / 1000) * 0.25 * selKr;
       actualMap[tInt] = income - cost;
     });
 
+    // Debug: log summary
+    var keys = Object.keys(actualMap);
+    var nonZero = keys.filter(function(k){ return Math.abs(actualMap[k]) > 0.001; });
+    console.log('[ActualEcon] Total buckets:', keys.length, 
+                'Non-zero:', nonZero.length,
+                'Grid entries:', Object.keys(gridB).length,
+                'Buy entries:', Object.keys(buyB).length,
+                'NordMap keys:', Object.keys(nordPriceMap).length,
+                'Sample gridB:', Object.keys(gridB).slice(0,2).map(function(k){ return k+':'+avg(gridB[k]).toFixed(0)+'W'; }),
+                'Sample nordMap:', Object.keys(nordPriceMap).slice(0,2).map(function(k){ return k+':'+nordPriceMap[k]+'öre'; })
+    );
     return actualMap;
   } catch(e) {
     console.warn('[ActualEcon]', e);
