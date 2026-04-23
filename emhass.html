@@ -964,230 +964,69 @@ function computeChargingWindow(tableRows, chartData) {
 var _liveT = null;
 
 async function loadLiveData() {
-
-  // If app not visible yet, don't run
   var appEl = document.getElementById('app');
   if (!appEl || appEl.style.display === 'none' || appEl.style.display === '') return;
-
-  var log = [];
-
+  
   try {
-    log.push('start');
-
-    // ── Fetch sensors one by one so one failure doesn't kill all ──
     async function safe(path) {
-      try {
-        return await haFetch(path);
-      } catch (e) {
-        return { state: 'unavailable', attributes: {} };
-      }
+      try { return await haFetch(path); }
+      catch(e) { return {state:'unavailable', attributes:{}}; }
     }
 
-    var pvS     = await safe('/api/states/sensor.sigen_plant_pv_power');
-    var loadS   = await safe('/api/states/sensor.sigen_plant_consumed_power');
-    var battS   = await safe('/api/states/sensor.sigen_plant_battery_power');
-    var socS    = await safe('/api/states/sensor.sigen_plant_battery_state_of_charge');
-    var gridAS  = await safe('/api/states/sensor.sigen_plant_grid_active_power');
-    var impS    = await safe('/api/states/sensor.sigen_plant_grid_import_power');
-    var expS    = await safe('/api/states/sensor.sigen_plant_grid_export_power');
-    var pvKwhS  = await safe('/api/states/sensor.sigen_plant_daily_third_party_inverter_energy');
-
-    // HA template sensors
-    var haNetCost = await safe('/api/states/sensor.emhass_faktisk_daglig_nettokostnad');
-    var haSaved   = await safe('/api/states/sensor.emhass_sparad_kostnad_idag');
-    var haSelfSuf = await safe('/api/states/sensor.emhass_sjalvforsorjning_idag');
-
-    var bChgS   = await safe('/api/states/sensor.sigen_plant_daily_battery_charge_energy');
-    var bDisS   = await safe('/api/states/sensor.sigen_plant_daily_battery_discharge_energy');
-    var impKwhS = await safe('/api/states/sensor.sigen_plant_daily_grid_import_energy');
-    var expKwhS = await safe('/api/states/sensor.sigen_plant_daily_grid_export_energy');
-
-    var buyS    = await safe('/api/states/sensor.mpc_general_price');
-    var sellS   = await safe('/api/states/sensor.mpc_feed_in_price');
-    var emhBatS = await safe('/api/states/sensor.mpc_batt_power');
-
-    var nordS = NORDPOOL ? await safe('/api/states/' + NORDPOOL) : null;
-    var evS   = await safe('/api/states/sensor.tygelvagen_40_power');
-
-    log.push('fetched');
-
-    function numSoc(s) {
-      var v = parseFloat(s && s.state);
-      return isNaN(v) ? 0 : v;
-    }
+    // Hämta alla sensorer
+    const [pvS, loadS, battS, socS, gridAS, impS, expS, pvKwhS, haNetCost, buyS, sellS, emhBatS, nordS, evS] = await Promise.all([
+      safe('/api/states/sensor.sigen_plant_pv_power'),
+      safe('/api/states/sensor.sigen_plant_consumed_power'),
+      safe('/api/states/sensor.sigen_plant_battery_power'),
+      safe('/api/states/sensor.sigen_plant_battery_state_of_charge'),
+      safe('/api/states/sensor.sigen_plant_grid_active_power'),
+      safe('/api/states/sensor.sigen_plant_grid_import_power'),
+      safe('/api/states/sensor.sigen_plant_grid_export_power'),
+      safe('/api/states/sensor.sigen_plant_daily_third_party_inverter_energy'),
+      safe('/api/states/sensor.emhass_faktisk_daglig_nettokostnad'),
+      safe('/api/states/sensor.mpc_general_price'),
+      safe('/api/states/sensor.mpc_feed_in_price'),
+      safe('/api/states/sensor.mpc_batt_power'),
+      NORDPOOL ? safe('/api/states/'+NORDPOOL) : Promise.resolve(null),
+      safe('/api/states/sensor.tygelvagen_40_power')
+    ]);
 
     function num(s) {
-      var v = parseFloat(s && s.state);
+      var v = parseFloat(s?.state);
       if (isNaN(v)) return 0;
-
-      if (s.attributes && s.attributes.unit_of_measurement === 'kW') {
-        return v * 1000;
-      }
-
-      return v;
+      return (s.attributes?.unit_of_measurement === 'kW') ? v * 1000 : v;
     }
 
-    var pvW    = num(pvS);
-    var loadW  = num(loadS);
-    var battW  = num(battS);
-    var socPct = parseFloat(socS && socS.state) || 0;
+    var pvW = num(pvS), loadW = num(loadS), battW = num(battS), gridW = num(gridAS);
+    var socPct = parseFloat(socS?.state) || 0;
+    var buyKr = parseFloat(buyS?.state) || 0, sellKr = parseFloat(sellS?.state) || 0;
+    var emhBat = parseFloat(emhBatS?.state) || 0;
 
-    _pfData.socPct = socPct;
+    // Spara ekonomi-data globalt
+    var haNetVal = parseFloat(haNetCost?.state);
+    window._haNetCostToday = isNaN(haNetVal) ? 0 : haNetVal;
 
-    var gridAct = num(gridAS);
-    var impW    = num(impS);
-    var expW    = num(expS);
-
-    var gridW = gridAct !== 0
-      ? gridAct
-      : (impW > 0 ? impW : -expW);
-
-    var effImpW = Math.max(0, gridW);
-    var effExpW = Math.max(0, -gridW);
-
-    var pvKwh  = num(pvKwhS);
-    var bChg   = num(bChgS);
-    var bDis   = num(bDisS);
-    var impKwh = num(impKwhS);
-    var expKwh = num(expKwhS);
-    var buyKr  = num(buyS);
-    var sellKr = num(sellS);
-    var emhBat = num(emhBatS);
-    var evW    = num(evS);
-
-    var buyOre  = Math.round(buyKr * 100);
-    var sellOre = Math.round(sellKr * 100);
-
-    log.push(`parsed pvW=${pvW} battW=${battW} gridW=${gridW} soc=${socPct}`);
-
-    // Nordpool raw_today
-    var todayOre = [];
-    if (nordS && nordS.attributes && nordS.attributes.raw_today) {
-      todayOre = nordS.attributes.raw_today.map(h => h.value);
-    }
-
-    var avgOre = todayOre.length
-      ? todayOre.reduce((a, b) => a + b, 0) / todayOre.length
-      : buyOre || 84;
-
-    // ── Elpris-kort ──
-    setText('tc-price', buyOre || '–');
-
-    var relPct = avgOre > 0
-      ? Math.round((buyOre - avgOre) / avgOre * 100)
-      : 0;
-
-    var relEl = document.getElementById('tc-price-rel');
-
-    if (relEl) {
-      if (!buyOre) {
-        relEl.textContent = 'Debug: ' + log.join(' → ');
-        relEl.style.color = '#f87171';
-      } else if (relPct > 5) {
-        relEl.textContent = `Över snitt ↑${relPct}%`;
-        relEl.style.color = '#f87171';
-      } else if (relPct < -5) {
-        relEl.textContent = `Under snitt ↓${Math.abs(relPct)}%`;
-        relEl.style.color = '#22c55e';
-      } else {
-        relEl.textContent = 'Nära snitt';
-        relEl.style.color = '#94a3b8';
-      }
-    }
-
-    var spotOre = nordS?.attributes?.current_price != null
-      ? Math.round(parseFloat(nordS.attributes.current_price) || buyOre)
-      : (nordS ? Math.round(parseFloat(nordS.state) || buyOre) : buyOre);
-
-    setText('tc-spot', spotOre || '–');
-    setText('tc-sell', sellOre || '–');
-
-    drawSparkline(todayOre, buyOre, avgOre);
-
-    // ── Sol-kort ──
-    setText('tc-sol-kwh', pvKwh >= 0 ? pvKwh.toFixed(1) : '–');
-    setText('tc-pv-w', Math.round(pvW) || '0');
-    setText('tc-soc', socPct > 0 ? socPct.toFixed(1) + ' %' : '–');
-    setText('tc-bchg', bChg > 0 ? bChg.toFixed(1) : '–');
-    setText('tc-bdis', bDis > 0 ? bDis.toFixed(1) : '–');
-
-    // ── Beslut-kort ──
+    // Beräkna beslut
     var emhBatForClassify = emhBat !== 0 ? emhBat : -battW;
     var dec = classify(emhBatForClassify, pvW, gridW, buyKr, sellKr, buyKr * 0.9);
 
-    var badge = document.getElementById('tc-badge');
-    if (badge) {
-      badge.textContent = dec.label;
-      badge.style.cssText =
-        'display:inline-block;padding:5px 14px;border-radius:20px;font-size:.88rem;font-weight:700;' +
-        `background:${dec.color}33;color:${dec.color};border:2px solid ${dec.color}88;margin-bottom:8px`;
+    // Uppdatera ekonomi-boxarna
+    if (allData && allData.tableRows) {
+      updateEconUI(allData.tableRows, (avgOreGlobal || 84));
     }
 
-    var mainW = Math.abs(battW) > 50
-      ? Math.abs(battW)
-      : Math.abs(gridW) > 50
-        ? Math.abs(gridW)
-        : pvW;
-
-    var decW = document.getElementById('tc-dec-w');
-    if (decW) {
-      decW.textContent = Math.round(mainW);
-      decW.style.color = dec.color;
-    }
-
-    var descTxt =
-      battW > 50  ? `Laddar batteri ${Math.round(battW)} W` :
-      battW < -50 ? `Urladdar batteri ${Math.abs(Math.round(battW))} W` :
-      gridW < -50 ? `Säljer ${Math.abs(Math.round(gridW))} W till nät` :
-      gridW > 50  ? `Köper ${Math.round(gridW)} W från nät` :
-                    'Självförsörjande';
-
-    setText('tc-dec-sub', descTxt);
-    setText('tc-imp', impKwh > 0 ? impKwh.toFixed(1) : '0.0');
-    setText('tc-exp', expKwh > 0 ? expKwh.toFixed(1) : '0.0');
-
-    var haNetVal   = parseFloat(haNetCost?.state);
-    var haSavedVal = parseFloat(haSaved?.state);
-
-    if (!isNaN(haNetVal) && haNetCost.state !== 'unavailable' && haNetCost.state !== 'unknown') {
-      var sfEl = document.getElementById('econ-sf');
-      if (sfEl) {
-        sfEl.textContent = (haNetVal >= 0 ? '+' : '') + haNetVal.toFixed(2) + ' kr';
-        sfEl.style.color = haNetVal >= 0 ? 'var(--green)' : '#f87171';
-      }
-
-      var sfSub = document.getElementById('econ-sf-sub');
-      if (sfSub) sfSub.textContent = 'faktisk nettointäkt idag';
-    }
-
-    window._haNetCostToday = isNaN(haNetVal) ? 0 : haNetVal;
-    window._haSavedToday   = isNaN(haSavedVal) ? 0 : haSavedVal;
-
-    if (typeof allData !== 'undefined' && allData.tableRows) {
-      updateEconUI(allData.tableRows, avgOre);
-    }
-
+    // Uppdatera Power Flow
+    _pfData.socPct = socPct;
     _pfData.dec = dec;
+    drawFlowLines(pvW, loadW, battW, gridW, 0, (battW > 5), (battW < -5), (gridW > 10), (gridW < -10), socPct, dec);
 
-    function tryDraw() {
-      drawFlowLines(pvW, loadW, battW, gridW, evW,
-        battW > 5, battW < -5, gridW > 10, gridW < -10);
-    }
+    // Uppdatera Top Cards
+    setText('tc-price', Math.round(buyKr * 100));
+    setText('tc-sol-kwh', (num(pvKwhS)/1000).toFixed(1));
+    setText('tc-pv-w', Math.round(pvW));
+    setText('tc-soc', socPct.toFixed(1) + ' %');
 
-    setTimeout(tryDraw, 200);
-    setTimeout(tryDraw, 800);
-
-    log.push('done');
-
-  } catch (e) {
-    console.error('[Live]', e);
-
-    var rel = document.getElementById('tc-price-rel');
-    if (rel) {
-      rel.textContent = 'Fel: ' + e.message;
-      rel.style.color = '#f87171';
-    }
-  }
+  } catch(e) { console.error("Live-fel:", e); }
 }
 
 
@@ -1293,137 +1132,58 @@ function startPFCanvas() {
 
 function renderPF(canvas, d, dashOffset) {
   var dpr = window.devicePixelRatio || 1;
-  var W   = canvas.parentElement ? canvas.parentElement.offsetWidth - 40 : 600;
-  var H   = Math.round(W * 0.38);  // 38% aspect ratio
-  H = Math.max(H, 200);
+  var W = canvas.parentElement ? canvas.parentElement.offsetWidth - 40 : 600;
+  var H = Math.max(Math.round(W * 0.42), 240);
 
   if (canvas.width !== W * dpr) {
-    canvas.width  = W * dpr;
-    canvas.height = H * dpr;
-    canvas.style.width  = W + 'px';
-    canvas.style.height = H + 'px';
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   }
 
   var ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
 
-  // Node layout: fixed grid positions
-  var nodeR = Math.min(48, W * 0.09);
-  var cx = W / 2;
-  var col1 = W * 0.18;
-  var col3 = W * 0.82;
-  var row1 = H * 0.22;
-  var row2 = H * 0.65;
-  var row3 = H * 0.92;
+  var nodeR = Math.min(52, W * 0.1);
+  var cx = W / 2, col1 = W * 0.2, col3 = W * 0.8;
+  var row1 = H * 0.25, row2 = H * 0.65, row3 = H * 0.92;
 
-  // Nodes: {x, y, icon, label, val, color}
   var nodes = {
-    sol:   { x: cx,   y: row1, icon:'☀️',  lbl:'Sol',    val: Math.round(d.pvW)   + ' W', color:'#d97706' },
-    batt:  { x: col1, y: row2, icon:'🔋',  lbl: 'Batteri ' + (_pfData.socPct||0).toFixed(0) + '%',
-             val: (d.battW>5?'▲ ':d.battW<-5?'▼ ':'') + Math.abs(Math.round(d.battW)) + ' W',
-             color: (_pfData.socPct||0) > 60 ? '#2563eb' : (_pfData.socPct||0) > 30 ? '#d97706' : '#dc2626' },
-    house: { x: cx,   y: row2, icon:'🏠',  lbl:'Hus',    val: Math.round(d.loadW) + ' W', color:'#db2777' },
-    grid:  { x: col3, y: row2, icon:'🔌',  lbl: d.gridImporting ? 'Nät (köp)' : d.gridExporting ? 'Nät (sälj)' : 'Nät',
-             val: Math.abs(Math.round(d.gridW)) + ' W', color:'#4b5563' },
+    sol:   { x: cx,   y: row1, icon:'☀️', lbl:'Sol', val: Math.round(d.pvW) + ' W', color:'#fbbf24' },
+    batt:  { x: col1, y: row2, icon:'🔋', lbl:'Batteri ' + (d.socPct||0).toFixed(0) + '%', val: Math.abs(Math.round(d.battW)) + ' W', color: (d.socPct > 30 ? '#3b82f6' : '#ef4444') },
+    house: { x: cx,   y: row2, icon:'🏠', lbl:'Hus', val: Math.round(d.loadW) + ' W', color:'#ec4899' },
+    grid:  { x: col3, y: row2, icon:'🔌', lbl:'Nät', val: Math.abs(Math.round(d.gridW)) + ' W', color:'#9ca3af' }
   };
 
-  // Draw flow lines first (under nodes)
-  ctx.save();
-  ctx.setLineDash([12, 7]);
-  ctx.lineDashOffset = -dashOffset;
-  ctx.lineWidth = 3;
-  ctx.lineCap = 'round';
-
-  function flowLine(from, to, color, watts) {
-    if (!from || !to || Math.abs(watts) < 5) return;
-    var dx = to.x - from.x, dy = to.y - from.y;
-    var dist = Math.sqrt(dx*dx + dy*dy) || 1;
-    var nx = dx/dist, ny = dy/dist;
-    var x1 = from.x + nx * nodeR;
-    var y1 = from.y + ny * nodeR;
-    var x2 = to.x   - nx * nodeR;
-    var y2 = to.y   - ny * nodeR;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = Math.min(6, Math.max(2, Math.abs(watts) / 500));
-    ctx.setLineDash([12, 7]);
-    ctx.lineDashOffset = -dashOffset;
+  // Rita linjer
+  function flow(f, t, c, w) {
+    if (!f || !t || Math.abs(w) < 5) return;
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
+    ctx.moveTo(f.x, f.y); ctx.lineTo(t.x, t.y);
+    ctx.strokeStyle = c; ctx.lineWidth = Math.min(6, Math.max(2, Math.abs(w)/500));
+    ctx.setLineDash([12, 18]); ctx.lineDashOffset = -dashOffset * 2;
+    ctx.shadowColor = c; ctx.shadowBlur = 10;
     ctx.stroke();
-    // Arrow tip
-    ctx.setLineDash([]);
-    ctx.fillStyle = color;
-    ctx.save();
-    ctx.translate(x2, y2);
-    ctx.rotate(Math.atan2(dy, dx));
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(-10, -5);
-    ctx.lineTo(-10,  5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    ctx.shadowBlur = 0; ctx.setLineDash([]);
   }
 
-  if (d.pvW > 5)                         flowLine(nodes.sol,   nodes.house, '#fbbf24', d.pvW);
-  if (d.battCharging && d.pvW > 20)      flowLine(nodes.sol,   nodes.batt,  '#22c55e', Math.abs(d.battW));
-  if (d.battCharging && d.pvW <= 20)     flowLine(nodes.grid,  nodes.batt,  '#a78bfa', Math.abs(d.battW));
-  if (d.battDischarging)                 flowLine(nodes.batt,  nodes.house, '#60a5fa', Math.abs(d.battW));
-  if (d.gridImporting)                   flowLine(nodes.grid,  nodes.house, '#f87171', Math.abs(d.gridW));
-  if (d.gridExporting)                   flowLine(nodes.house, nodes.grid,  '#2dd4bf', Math.abs(d.gridW));
-  ctx.restore();
+  if (d.pvW > 5) flow(nodes.sol, nodes.house, '#fbbf24', d.pvW);
+  if (d.battCharging) flow(nodes.sol, nodes.batt, '#22c55e', d.battW);
+  if (d.battDischarging) flow(nodes.batt, nodes.house, '#3b82f6', d.battW);
+  if (d.gridImporting) flow(nodes.grid, nodes.house, '#ef4444', d.gridW);
+  if (d.gridExporting) flow(nodes.house, nodes.grid, '#14b8a6', d.gridW);
 
-  // Draw nodes on top
-  function drawNode(n) {
-    // Circle background
-    ctx.beginPath();
-    ctx.arc(n.x, n.y, nodeR, 0, Math.PI * 2);
-    ctx.fillStyle = n.color + '33';
-    ctx.fill();
-    ctx.strokeStyle = n.color + '99';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([]);
-    ctx.stroke();
-
-    // Watts value
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold ' + Math.round(nodeR * 0.32) + 'px DM Mono, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(n.val, n.x, n.y - nodeR * 0.4);
-
-    // Emoji icon
-    ctx.font = Math.round(nodeR * 0.55) + 'px serif';
-    ctx.fillText(n.icon, n.x, n.y + nodeR * 0.2);
-
-    // Label below
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.font = Math.round(nodeR * 0.27) + 'px DM Sans, sans-serif';
-    ctx.fillText(n.lbl, n.x, n.y + nodeR + 14);
-  }
-
-  Object.values(nodes).forEach(drawNode);
-
-  // Decision label at bottom center
-  if (_pfData.dec) {
-    ctx.fillStyle = _pfData.dec.color + '33';
-    ctx.strokeStyle = _pfData.dec.color + '88';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([]);
-    var lbl = '● ' + _pfData.dec.label;
-    ctx.font = '600 13px DM Sans, sans-serif';
-    var tw = ctx.measureText(lbl).width + 28;
-    var lx = cx - tw/2, ly = row3 - 14;
-    ctx.beginPath();
-    ctx.roundRect(lx, ly, tw, 26, 13);
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle = _pfData.dec.color;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(lbl, cx, ly + 13);
-  }
+  // Rita noder
+  Object.values(nodes).forEach(n => {
+    var g = ctx.createRadialGradient(n.x-10, n.y-10, 5, n.x, n.y, nodeR);
+    g.addColorStop(0, n.color + 'bb'); g.addColorStop(1, '#181c26');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(n.x, n.y, nodeR, 0, 7); ctx.fill();
+    ctx.strokeStyle = n.color; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(n.val, n.x, n.y - 10);
+    ctx.font = '24px serif'; ctx.fillText(n.icon, n.x, n.y + 15);
+    ctx.fillStyle = '#9ca3af'; ctx.font = '12px sans-serif'; ctx.fillText(n.lbl, n.x, n.y + nodeR + 15);
+  });
 }
 
 
