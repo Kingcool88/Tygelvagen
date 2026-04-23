@@ -933,11 +933,42 @@ function renderPF(canvas, d, dashOffset) {
     ctx.restore();
   }
 
-  if (d.pvW > 5) flow(nodes.sol, nodes.house, '#fbbf24', d.pvW);
-  if (d.battCharging) flow(nodes.sol, nodes.batt, '#22c55e', d.battW);
-  if (d.battDischarging) flow(nodes.batt, nodes.house, '#3b82f6', d.battW);
-  if (d.gridImporting) flow(nodes.grid, nodes.house, '#ef4444', d.gridW);
-  if (d.gridExporting) flow(nodes.house, nodes.grid, '#14b8a6', d.gridW);
+  // --- SMARTARE LOGIK FÖR ELFLÖDEN ---
+  
+  // 1. Sol till Hus (om solen lyser)
+  if (d.pvW > 5) {
+    flow(nodes.sol, nodes.house, '#fbbf24', d.pvW);
+  }
+
+  // 2. Ladda batteriet (Grönt från sol, Lila från nät)
+  if (d.battCharging) {
+    if (d.pvW > 50) {
+      // Solen lyser starkt, vi laddar primärt från solen
+      flow(nodes.sol, nodes.batt, '#22c55e', Math.abs(d.battW));
+    } else {
+      // Det är mörkt, vi laddar från elnätet
+      flow(nodes.grid, nodes.batt, '#a855f7', Math.abs(d.battW));
+    }
+  }
+
+  // 3. Batteri laddas ur (till huset)
+  if (d.battDischarging) {
+    flow(nodes.batt, nodes.house, '#3b82f6', Math.abs(d.battW));
+  }
+
+  // 4. Import från Nät (köper el)
+  if (d.gridImporting) {
+    // Om vi importerar MER än vad vi laddar batteriet med, går resten till huset
+    var gridToHouse = d.gridW - (d.battCharging && d.pvW < 50 ? Math.abs(d.battW) : 0);
+    if (gridToHouse > 10) {
+      flow(nodes.grid, nodes.house, '#ef4444', gridToHouse);
+    }
+  }
+
+  // 5. Export till Nät (säljer överskott)
+  if (d.gridExporting) {
+    flow(nodes.house, nodes.grid, '#14b8a6', Math.abs(d.gridW));
+  }
 
   // Gammalt, säkert loop-format som fungerar överallt
   Object.keys(nodes).forEach(function(k) {
