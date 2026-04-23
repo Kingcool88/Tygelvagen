@@ -471,50 +471,58 @@ function renderChart(d,spanH){
 
 function updateEconUI(tableRows, avgOre) {
   var now = Date.now();
-  var totaltHittills = 0;
-  var totaltFramåt = 0;
   
-  // Hämta dagens datum (00:00:00) för att bara räkna rader för just idag
-  var startOfToday = new Date(); startOfToday.setHours(0,0,0,0);
-  var endOfToday = new Date(); endOfToday.setHours(23,59,59,999);
+  // 1. Hämta 'Hittills idag' från den globala variabeln som sätts i loadLiveData.
+  // Vi tvingar det till ett nummer för att undvika att '+33.45' hanteras som text.
+  var soFar = Number(window._haNetCostToday);
+  if (isNaN(soFar)) soFar = 0;
 
-  tableRows.forEach(function(r) {
-    // Kontrollera att raden tillhör idag
-    if (r.t >= startOfToday.getTime() && r.t <= endOfToday.getTime()) {
-      if (r.t < now) {
-        // För historik: prioritera faktiskt utfall om det finns, annars beräknad sparad sol/vinst
-        // Om 'actualMap' (Faktiskt kr i tabellen) har data, använd den, annars r.econKr
-        totaltHittills += (r.actualKr !== undefined ? r.actualKr : (r.econKr || 0));
-      } else {
-        // För framtiden: använd EMHASS-planen (PLAN KR/KVART)
-        totaltFramåt += (r.econKr || 0);
+  var forecast = 0;
+
+  // 2. Beräkna 'Prognos resten av dagen' från tabellens framtida rader.
+  if (tableRows && tableRows.length > 0) {
+    tableRows.forEach(function(r) {
+      // Vi räknar bara rader som är efter 'nu' och tillhör dagens datum.
+      // (r.isHistory markeras ofta i loadData för rader som passerat).
+      if (r.t > now && !r.isHistory) {
+        var rowEcon = Number(r.econKr);
+        if (!isNaN(rowEcon)) {
+          forecast += rowEcon;
+        }
       }
-    }
-  });
-
-  // Om din HA-sensor är mer pålitlig för "Hittills", använd den istället:
-  if (window._haNetCostToday && window._haNetCostToday !== 0) {
-    totaltHittills = window._haNetCostToday;
+    });
   }
 
-  var totaltHelaDagen = totaltHittills + totaltFramåt;
+  // 3. Beräkna totalen.
+  var total = soFar + forecast;
 
-  function fmt(kr) { return (kr >= 0 ? '+' : '') + kr.toFixed(2) + ' kr'; }
+  // Formateringshjälp för att lägga till + eller - framför siffran.
+  function fmt(kr) { 
+    return (kr >= 0 ? '+' : '') + kr.toFixed(2) + ' kr'; 
+  }
 
-  // Uppdatera dashboard-korten
+  // 4. Uppdatera HTML-elementen.
   const sfEl = document.getElementById('econ-sf');
   const fcEl = document.getElementById('econ-fc');
   const totEl = document.getElementById('econ-tot');
 
-  if (sfEl) sfEl.textContent = fmt(totaltHittills);
-  if (fcEl) fcEl.textContent = fmt(totaltFramåt);
-  if (totEl) totEl.textContent = fmt(totaltHelaDagen);
+  if (sfEl) sfEl.textContent = fmt(soFar);
+  if (fcEl) fcEl.textContent = fmt(forecast);
+  if (totEl) totEl.textContent = fmt(total);
 
-  // Uppdatera färger på korten
+  // 5. Uppdatera färger på korten (Grön för positivt/vinst, Röd för negativt/kostnad).
   const sfCard = document.getElementById('econ-sf-card');
   const totCard = document.getElementById('econ-tot-card');
-  if (sfCard) sfCard.className = 'econ-card ' + (totaltHittills >= 0 ? 'econ-positive' : 'econ-negative');
-  if (totCard) totCard.className = 'econ-card ' + (totaltHelaDagen >= 0 ? 'econ-positive' : 'econ-negative');
+  
+  if (sfCard) {
+    sfCard.className = 'econ-card ' + (soFar >= 0 ? 'econ-positive' : 'econ-negative');
+  }
+  if (totCard) {
+    totCard.className = 'econ-card ' + (total >= 0 ? 'econ-positive' : 'econ-negative');
+  }
+  
+  // Logga i konsolen för felsökning om siffrorna ser konstiga ut.
+  console.log('[updateEconUI] SoFar:', soFar, 'Forecast:', forecast, 'Total:', total);
 }
 
 // Load EV data + charging plan (all Swedish)
@@ -1120,8 +1128,12 @@ async function loadLiveData() {
     }
 
     // Store HA net cost for actual economy map (use it per-quarter via attribution)
-    window._haNetCostToday = isNaN(haNetVal) ? null : haNetVal;
-    window._haSavedToday   = isNaN(haSavedVal) ? null : haSavedVal;
+    window._haNetCostToday = isNaN(haNetVal) ? 0 : haNetVal;
+    window._haSavedToday   = isNaN(haSavedVal) ? 0 : haSavedVal;
+	
+	if (typeof allData !== 'undefined' && allData.tableRows) {
+	  updateEconUI(allData.tableRows, avgOre);
+	}
 
     // ── Power Flow nodes ─────────────────────────────────────
     // Sigenergy battery: pos=charging, neg=discharging
