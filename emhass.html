@@ -872,85 +872,60 @@ var EV_BATTERY_KWH = 18.8; // kWh (Volvo XC90 PHEV)
 var EV_CHARGER_KW  = 3.7;  // kW (Easee, standard AC)
 
 function computeChargingWindow(tableRows, chartData) {
-  // Guard: ev-plan-text must exist
-  if (!document.getElementById('ev-plan-text')) return;
-  // Get current SOC and target
-  var socEl  = document.getElementById('ev-soc-pct');
-  var targEl = document.getElementById('ev-target-soc');
-  var depEl  = document.getElementById('ev-departure');
+  const planTextEl = document.getElementById('ev-plan-text');
+  if (!planTextEl) return;
 
-  var socPct  = parseFloat(socEl&&socEl.textContent)||0;
-  var targPct = parseFloat(targEl&&targEl.textContent)||100;
-  var depTime = depEl&&depEl.textContent!=='–'?depEl.textContent:null;
+  const socEl = document.getElementById('ev-soc-pct');
+  const targEl = document.getElementById('ev-target-soc');
+  const depEl = document.getElementById('ev-departure');
 
-  if(!socPct||!depTime) {
-    setText('ev-plan-text') = 'Bil ej ansluten';
+  const socPct = parseFloat(socEl?.textContent) || 0;
+  const targPct = parseFloat(targEl?.textContent) || 100;
+  const depTime = (depEl && depEl.textContent !== '–') ? depEl.textContent : null;
+
+  if (!socPct || !depTime) {
+    planTextEl.textContent = 'Bil ej ansluten';
     return;
   }
 
-  // Calculate energy needed
-  var neededKwh = Math.max(0, (targPct - socPct) / 100 * EV_BATTERY_KWH);
-  var neededHours = neededKwh / EV_CHARGER_KW;
-  var neededSlots = Math.ceil(neededHours * 4); // 15-min slots
+  const neededKwh = Math.max(0, (targPct - socPct) / 100 * EV_BATTERY_KWH);
+  const neededHours = neededKwh / EV_CHARGER_KW;
+  const neededSlots = Math.ceil(neededHours * 4);
 
-  if(neededKwh < 0.5) {
-    setText('ev-plan-text') = 'Redan fulladdat';
-    document.getElementById('ev-charge-to').textContent = '–';
-    document.getElementById('ev-charge-duration').textContent = '–';
+  const durationEl = document.getElementById('ev-charge-duration');
+  if (durationEl) {
+    durationEl.textContent = Math.round(neededHours * 60) + ' min (' + neededKwh.toFixed(1) + ' kWh)';
+  }
+
+  if (neededKwh < 0.5) {
+    planTextEl.textContent = 'Redan fulladdat';
     return;
   }
 
-  document.getElementById('ev-charge-duration').textContent =
-    Math.round(neededHours*60) + ' min (' + neededKwh.toFixed(1) + ' kWh)';
+  const now = Date.now();
+  const dep = new Date();
+  const parts = depTime.split(':');
+  dep.setHours(parseInt(parts[0]), parseInt(parts[1] || 0), 0, 0);
+  if (dep <= now) dep.setDate(dep.getDate() + 1);
+  const depTs = dep.getTime();
 
-  // Find departure timestamp (tomorrow if time has already passed)
-  var now = new Date();
-  var dep = new Date();
-  var parts = depTime.split(':');
-  dep.setHours(parseInt(parts[0]), parseInt(parts[1]||0), 0, 0);
-  if(dep <= now) dep.setDate(dep.getDate()+1);
-  var depTs = dep.getTime();
+  const slots = tableRows.filter(r => r.t > now && r.t <= depTs && r.buyOre > 0)
+                         .sort((a, b) => a.buyOre - b.buyOre);
 
-  // Get all slots between now and departure with price
-  var slots = tableRows.filter(function(r){
-    return r.t > Date.now() && r.t <= depTs && r.buyOre > 0;
-  }).sort(function(a,b){return a.buyOre-b.buyOre;}); // cheapest first
-
-  if(slots.length < neededSlots) {
-    setText('ev-plan-text') = 'Otillräckligt med tid';
+  if (slots.length < neededSlots) {
+    planTextEl.textContent = 'Otillräckligt med tid';
     return;
   }
 
-  // Pick the cheapest consecutive-ish slots
-  var cheapSlots = slots.slice(0, neededSlots).map(function(s){return s.t;}).sort(function(a,b){return a-b;});
-  var fromTs = cheapSlots[0];
-  var toTs   = cheapSlots[cheapSlots.length-1] + 900000;
+  const cheapSlots = slots.slice(0, neededSlots).map(s => s.t).sort((a, b) => a - b);
+  const fromTs = cheapSlots[0];
+  const toTs = cheapSlots[cheapSlots.length - 1] + 900000;
 
-  var fmtTime = function(ts){
-    var d = new Date(ts);
-    return d.toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
-  };
+  const fmtTime = ts => new Date(ts).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
 
-  setText('ev-plan-text') = fmtTime(fromTs);
-  document.getElementById('ev-charge-to').textContent   = fmtTime(toTs);
-
-  // Show price range of cheap hours
-  var minOre = Math.round(Math.min.apply(null, slots.slice(0,neededSlots).map(function(s){return s.buyOre;})));
-  var maxOre = Math.round(Math.max.apply(null, slots.slice(0,neededSlots).map(function(s){return s.buyOre;})));
-  document.getElementById('ev-cheap-hours').textContent = minOre + '–' + maxOre + ' öre/kWh';
-
-  // Add annotation to chart if chart exists
-  if(chart && fromTs && toTs) {
-    chart.addXaxisAnnotation({
-      x: fromTs, x2: toTs,
-      fillColor: '#60a5fa',
-      opacity: 0.12,
-      label: {
-        text: 'Ladda bilen',
-        style: { color: '#fff', background: '#60a5fa', fontFamily:"'DM Sans',sans-serif", fontSize:'11px' }
-      }
-    });
-  }
+  planTextEl.textContent = fmtTime(fromTs);
+  const toEl = document.getElementById('ev-charge-to');
+  if (toEl) toEl.textContent = fmtTime(toTs);
 }
 
 
@@ -1001,10 +976,15 @@ async function loadLiveData() {
 
     log.push('fetched');
 
-    function num(s) {
-      var v = parseFloat(s && s.state);
-      return isNaN(v) ? 0 : v;
-    }
+	function num(s) {
+	  var v = parseFloat(s && s.state);
+	  if (isNaN(v)) return 0;
+	  // Om HA-entiteten säger kW, multiplicera med 1000
+	  if (s.attributes && s.attributes.unit_of_measurement === 'kW') {
+		return v * 1000;
+	  }
+	  return v;
+	}
 
     var pvW    = num(pvS);
     var loadW  = num(loadS);
