@@ -955,7 +955,7 @@ async function loadLiveData() {
     var pvS    = await safe('/api/states/sensor.sigen_plant_pv_power');
     var loadS  = await safe('/api/states/sensor.sigen_plant_consumed_power');
     var battS  = await safe('/api/states/sensor.sigen_plant_battery_power');
-    var socS   = await safe('/api/states/sensor.sigen_plant_battery_state_of_charge');
+    var socS = await safe('/api/states/sensor.sigen_plant_battery_state_of_charge');
     var gridAS = await safe('/api/states/sensor.sigen_plant_grid_active_power');
     var impS   = await safe('/api/states/sensor.sigen_plant_grid_import_power');
     var expS   = await safe('/api/states/sensor.sigen_plant_grid_export_power');
@@ -975,7 +975,12 @@ async function loadLiveData() {
     var evS    = await safe('/api/states/sensor.tygelvagen_40_power');
 
     log.push('fetched');
-
+	
+	function numSoc(s) {
+	  var v = parseFloat(s && s.state);
+	  return isNaN(v) ? 0 : v; // Batteriprocent ska inte multipliceras
+	}
+	
 	function num(s) {
 	  var v = parseFloat(s && s.state);
 	  if (isNaN(v)) return 0;
@@ -990,7 +995,7 @@ async function loadLiveData() {
     var loadW  = num(loadS);
     // Sigenergy battery_power: positive = charging, negative = discharging
     var battW  = num(battS);
-    var socPct = num(socS);
+    var socPct = numSoc(socS);
     // Grid: use import/export separately (both positive)
     var gridAct = num(gridAS); // pos=buying, neg=selling (Sigenergy convention)
     var impW   = num(impS);
@@ -1335,11 +1340,11 @@ function renderPF(canvas, d, dashOffset) {
     ctx.font = 'bold ' + Math.round(nodeR * 0.32) + 'px DM Mono, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(n.val, n.x, n.y - nodeR * 0.18);
+    ctx.fillText(n.val, n.x, n.y - nodeR * 0.4);
 
     // Emoji icon
     ctx.font = Math.round(nodeR * 0.55) + 'px serif';
-    ctx.fillText(n.icon, n.x, n.y + nodeR * 0.18);
+    ctx.fillText(n.icon, n.x, n.y + nodeR * 0.2);
 
     // Label below
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
