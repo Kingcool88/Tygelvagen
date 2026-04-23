@@ -1085,7 +1085,16 @@ async function loadLiveData() {
     _pfData.dec = dec;
     drawFlowLines(pvW, loadW, battW, gridW, 0, (battW > 5), (battW < -5), (gridW > 10), (gridW < -10), socPct, dec);
 
+    // --- FIX: Beräkna spotpriset från Nordpool ---
+    var spotOre = nordS && nordS.attributes && nordS.attributes.current_price != null
+      ? Math.round(parseFloat(nordS.attributes.current_price))
+      : (nordS ? Math.round(parseFloat(nordS.state)) : Math.round(buyKr * 100));
+
+    // --- UPPDATERA ALLA KORT I UI ---
     setText('tc-price', Math.round(buyKr * 100));
+    setText('tc-spot', spotOre);                     // Nu visas Spotpriset!
+    setText('tc-sell', Math.round(sellKr * 100));    // Nu visas Säljpriset!
+    
     setText('tc-sol-kwh', numKwh(pvKwhS).toFixed(1));
     setText('tc-pv-w', Math.round(pvW));
     setText('tc-soc', socPct.toFixed(1) + ' %');
