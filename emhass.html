@@ -1084,6 +1084,24 @@ async function loadLiveData() {
   } catch(e) { console.error("Live-fel:", e); }
 }
 
+function startLive() {
+  if (_liveT) clearInterval(_liveT);
+  startPFCanvas();
+  
+  var rel = document.getElementById('tc-price-rel');
+  if (rel) { rel.textContent = 'Ansluter...'; rel.style.color = '#94a3b8'; }
+  
+  haFetch('/api/states/sensor.mpc_general_price').then(function(r){
+    if (rel) { rel.textContent = 'Test OK: ' + Math.round(parseFloat(r.state)*100) + ' öre'; rel.style.color = '#22c55e'; }
+    loadLiveData();
+  }).catch(function(e){
+    if (rel) { rel.textContent = 'Anslutningsfel: ' + e.message; rel.style.color = '#f87171'; }
+    loadLiveData();
+  });
+  
+  _liveT = setInterval(loadLiveData, 15000);
+}
+
 async function startCharging(){
   var btn=document.getElementById('ev-charge-now-btn');
   if(btn) btn.textContent='Skickar...';
