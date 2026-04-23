@@ -1169,9 +1169,9 @@ async function loadLiveData() {
 
     _pfData.dec = dec;
 
-	function tryDraw() {
+    function tryDraw() {
       drawFlowLines(pvW, loadW, battW, gridW, evW,
-                    battCharging2, battDischarging2, gridImporting2, gridExporting2, socPct, dec);
+        battW > 5, battW < -5, gridW > 10, gridW < -10);
     }
 
     setTimeout(tryDraw, 200);
@@ -1294,8 +1294,8 @@ function startPFCanvas() {
 function renderPF(canvas, d, dashOffset) {
   var dpr = window.devicePixelRatio || 1;
   var W   = canvas.parentElement ? canvas.parentElement.offsetWidth - 40 : 600;
-  // Gör canvasen aningen högre för att ge plats åt 3D-effekter och labels
-  var H   = Math.max(Math.round(W * 0.42), 240); 
+  var H   = Math.round(W * 0.38);  // 38% aspect ratio
+  H = Math.max(H, 200);
 
   if (canvas.width !== W * dpr) {
     canvas.width  = W * dpr;
@@ -1308,128 +1308,121 @@ function renderPF(canvas, d, dashOffset) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
 
-  // Placering
-  var nodeR = Math.min(52, W * 0.1);
-  var cx = W / 2, col1 = W * 0.2, col3 = W * 0.8;
-  var row1 = H * 0.25, row2 = H * 0.65, row3 = H * 0.95;
+  // Node layout: fixed grid positions
+  var nodeR = Math.min(48, W * 0.09);
+  var cx = W / 2;
+  var col1 = W * 0.18;
+  var col3 = W * 0.82;
+  var row1 = H * 0.22;
+  var row2 = H * 0.65;
+  var row3 = H * 0.92;
 
+  // Nodes: {x, y, icon, label, val, color}
   var nodes = {
-    sol:   { x: cx,   y: row1, icon:'☀️',  lbl:'Sol', val: Math.round(d.pvW) + ' W', color:'#fbbf24' },
-    batt:  { x: col1, y: row2, icon:'🔋',  lbl: 'Batteri ' + (d.socPct||0).toFixed(0) + '%',
+    sol:   { x: cx,   y: row1, icon:'☀️',  lbl:'Sol',    val: Math.round(d.pvW)   + ' W', color:'#d97706' },
+    batt:  { x: col1, y: row2, icon:'🔋',  lbl: 'Batteri ' + (_pfData.socPct||0).toFixed(0) + '%',
              val: (d.battW>5?'▲ ':d.battW<-5?'▼ ':'') + Math.abs(Math.round(d.battW)) + ' W',
-             color: (d.socPct||0) > 60 ? '#3b82f6' : (d.socPct||0) > 30 ? '#f59e0b' : '#ef4444' },
-    house: { x: cx,   y: row2, icon:'🏠',  lbl:'Hus', val: Math.round(d.loadW) + ' W', color:'#ec4899' },
+             color: (_pfData.socPct||0) > 60 ? '#2563eb' : (_pfData.socPct||0) > 30 ? '#d97706' : '#dc2626' },
+    house: { x: cx,   y: row2, icon:'🏠',  lbl:'Hus',    val: Math.round(d.loadW) + ' W', color:'#db2777' },
     grid:  { x: col3, y: row2, icon:'🔌',  lbl: d.gridImporting ? 'Nät (köp)' : d.gridExporting ? 'Nät (sälj)' : 'Nät',
-             val: Math.abs(Math.round(d.gridW)) + ' W', color:'#9ca3af' },
+             val: Math.abs(Math.round(d.gridW)) + ' W', color:'#4b5563' },
   };
 
+  // Draw flow lines first (under nodes)
+  ctx.save();
+  ctx.setLineDash([12, 7]);
+  ctx.lineDashOffset = -dashOffset;
+  ctx.lineWidth = 3;
   ctx.lineCap = 'round';
 
-  // --- Funktion för att rita Neon-linjerna ---
   function flowLine(from, to, color, watts) {
     if (!from || !to || Math.abs(watts) < 5) return;
     var dx = to.x - from.x, dy = to.y - from.y;
     var dist = Math.sqrt(dx*dx + dy*dy) || 1;
     var nx = dx/dist, ny = dy/dist;
-    
-    // Starta och stanna precis utanför bubblan
-    var x1 = from.x + nx * (nodeR + 8); 
-    var y1 = from.y + ny * (nodeR + 8);
-    var x2 = to.x - nx * (nodeR + 15);   
-    var y2 = to.y - ny * (nodeR + 15);
-
-    // 1. Rita ett svagt botten-spår (ser ut som ett rör)
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-    ctx.strokeStyle = color + '22'; // Mycket transparent
-    ctx.lineWidth = 4;
-    ctx.shadowBlur = 0; 
-    ctx.setLineDash([]); 
-    ctx.stroke();
-
-    // 2. Rita den animerade, glödande energin
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    var x1 = from.x + nx * nodeR;
+    var y1 = from.y + ny * nodeR;
+    var x2 = to.x   - nx * nodeR;
+    var y2 = to.y   - ny * nodeR;
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.min(6, Math.max(2, Math.abs(watts) / 500));
-    ctx.setLineDash([12, 18]);
-    ctx.lineDashOffset = -dashOffset * 2; // Lite snabbare animation
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 12; // Skapar neon-effekten!
+    ctx.setLineDash([12, 7]);
+    ctx.lineDashOffset = -dashOffset;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
     ctx.stroke();
-
-    // 3. Rita pilhuvudet utan skugga
-    ctx.shadowBlur = 0; ctx.setLineDash([]); ctx.fillStyle = color;
-    ctx.save(); 
-    ctx.translate(to.x - nx * (nodeR + 5), to.y - ny * (nodeR + 5));
+    // Arrow tip
+    ctx.setLineDash([]);
+    ctx.fillStyle = color;
+    ctx.save();
+    ctx.translate(x2, y2);
     ctx.rotate(Math.atan2(dy, dx));
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-12, -6); ctx.lineTo(-12, 6); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-10, -5);
+    ctx.lineTo(-10,  5);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
   }
 
-  // Rita ut linjerna beroende på effekt
-  if (d.pvW > 5) flowLine(nodes.sol, nodes.house, '#fbbf24', d.pvW);
-  if (d.battCharging && d.pvW > 20) flowLine(nodes.sol, nodes.batt, '#22c55e', Math.abs(d.battW));
-  if (d.battCharging && d.pvW <= 20) flowLine(nodes.grid, nodes.batt, '#a855f7', Math.abs(d.battW));
-  if (d.battDischarging) flowLine(nodes.batt, nodes.house, '#3b82f6', Math.abs(d.battW));
-  if (d.gridImporting) flowLine(nodes.grid, nodes.house, '#ef4444', Math.abs(d.gridW));
-  if (d.gridExporting) flowLine(nodes.house, nodes.grid, '#14b8a6', Math.abs(d.gridW));
+  if (d.pvW > 5)                         flowLine(nodes.sol,   nodes.house, '#fbbf24', d.pvW);
+  if (d.battCharging && d.pvW > 20)      flowLine(nodes.sol,   nodes.batt,  '#22c55e', Math.abs(d.battW));
+  if (d.battCharging && d.pvW <= 20)     flowLine(nodes.grid,  nodes.batt,  '#a78bfa', Math.abs(d.battW));
+  if (d.battDischarging)                 flowLine(nodes.batt,  nodes.house, '#60a5fa', Math.abs(d.battW));
+  if (d.gridImporting)                   flowLine(nodes.grid,  nodes.house, '#f87171', Math.abs(d.gridW));
+  if (d.gridExporting)                   flowLine(nodes.house, nodes.grid,  '#2dd4bf', Math.abs(d.gridW));
+  ctx.restore();
 
-  // --- Funktion för att rita 3D-bubblorna ---
-  Object.values(nodes).forEach(n => {
-    ctx.shadowBlur = 0;
-    
-    // Skapa en 3D Radial Gradient (ljus i mitten, mörkare utåt)
-    var grad = ctx.createRadialGradient(n.x - nodeR*0.3, n.y - nodeR*0.3, nodeR*0.1, n.x, n.y, nodeR);
-    grad.addColorStop(0, n.color + 'aa'); // Ljus kärna
-    grad.addColorStop(1, '#0f1117');      // Mörk kant som smälter in i bakgrunden
-
-    ctx.beginPath(); 
+  // Draw nodes on top
+  function drawNode(n) {
+    // Circle background
+    ctx.beginPath();
     ctx.arc(n.x, n.y, nodeR, 0, Math.PI * 2);
-    ctx.fillStyle = grad; 
+    ctx.fillStyle = n.color + '33';
     ctx.fill();
-
-    // Glödande kantlinje runt bubblan
-    ctx.strokeStyle = n.color; 
+    ctx.strokeStyle = n.color + '99';
     ctx.lineWidth = 2;
-    ctx.shadowColor = n.color; 
-    ctx.shadowBlur = 8;
-    ctx.stroke(); 
-    ctx.shadowBlur = 0;
+    ctx.setLineDash([]);
+    ctx.stroke();
 
-    // Skriv Watt inuti bubblan
+    // Watts value
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold ' + Math.round(nodeR * 0.35) + 'px "DM Mono", monospace';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(n.val, n.x, n.y - nodeR * 0.35);
+    ctx.font = 'bold ' + Math.round(nodeR * 0.32) + 'px DM Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(n.val, n.x, n.y - nodeR * 0.4);
 
-    // Ikon inuti bubblan
-    ctx.font = Math.round(nodeR * 0.55) + 'px sans-serif';
-    ctx.fillText(n.icon, n.x, n.y + nodeR * 0.25);
+    // Emoji icon
+    ctx.font = Math.round(nodeR * 0.55) + 'px serif';
+    ctx.fillText(n.icon, n.x, n.y + nodeR * 0.2);
 
-    // Etikett (Batteri %, Hus, etc.) PLACERAD UNDER BUBBLAN
-    ctx.fillStyle = '#9ca3af'; 
-    ctx.font = '600 ' + Math.round(nodeR * 0.28) + 'px "DM Sans", sans-serif';
-    ctx.fillText(n.lbl, n.x, n.y + nodeR + 18);
-  });
+    // Label below
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = Math.round(nodeR * 0.27) + 'px DM Sans, sans-serif';
+    ctx.fillText(n.lbl, n.x, n.y + nodeR + 14);
+  }
 
-  // --- Besluts-etikett i botten ---
-  if (d.dec) {
-    ctx.fillStyle = d.dec.color + '22';
-    ctx.strokeStyle = d.dec.color;
-    ctx.lineWidth = 1.5; 
-    ctx.shadowColor = d.dec.color; 
-    ctx.shadowBlur = 10;
-    
-    var lbl = '● ' + d.dec.label;
-    ctx.font = 'bold 13px "DM Sans", sans-serif';
-    var tw = ctx.measureText(lbl).width + 30;
-    var lx = cx - tw/2, ly = row3 - 10;
-    
-    ctx.beginPath(); ctx.roundRect(lx, ly, tw, 28, 14);
-    ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
-    
-    ctx.fillStyle = d.dec.color; 
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(lbl, cx, ly + 14);
+  Object.values(nodes).forEach(drawNode);
+
+  // Decision label at bottom center
+  if (_pfData.dec) {
+    ctx.fillStyle = _pfData.dec.color + '33';
+    ctx.strokeStyle = _pfData.dec.color + '88';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    var lbl = '● ' + _pfData.dec.label;
+    ctx.font = '600 13px DM Sans, sans-serif';
+    var tw = ctx.measureText(lbl).width + 28;
+    var lx = cx - tw/2, ly = row3 - 14;
+    ctx.beginPath();
+    ctx.roundRect(lx, ly, tw, 26, 13);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = _pfData.dec.color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(lbl, cx, ly + 13);
   }
 }
 
