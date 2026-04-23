@@ -471,40 +471,50 @@ function renderChart(d,spanH){
 
 function updateEconUI(tableRows, avgOre) {
   var now = Date.now();
-  // Hämta faktisk nettointäkt från din HA-sensor som vi sparade i loadLiveData
-  var soFar = window._haNetCostToday || 0; 
-  var forecast = 0;
+  var totaltHittills = 0;
+  var totaltFramåt = 0;
+  
+  // Hämta dagens datum (00:00:00) för att bara räkna rader för just idag
+  var startOfToday = new Date(); startOfToday.setHours(0,0,0,0);
+  var endOfToday = new Date(); endOfToday.setHours(23,59,59,999);
 
-  // Loopa igenom tabellraderna för att hitta framtida prognosvärden
   tableRows.forEach(function(r) {
-    // Addera bara rader som ligger i framtiden (efter 'now') och som inte är historik
-    if (r.t > now && !r.isHistory) {
-      forecast += (r.econKr || 0);
+    // Kontrollera att raden tillhör idag
+    if (r.t >= startOfToday.getTime() && r.t <= endOfToday.getTime()) {
+      if (r.t < now) {
+        // För historik: prioritera faktiskt utfall om det finns, annars beräknad sparad sol/vinst
+        // Om 'actualMap' (Faktiskt kr i tabellen) har data, använd den, annars r.econKr
+        totaltHittills += (r.actualKr !== undefined ? r.actualKr : (r.econKr || 0));
+      } else {
+        // För framtiden: använd EMHASS-planen (PLAN KR/KVART)
+        totaltFramåt += (r.econKr || 0);
+      }
     }
   });
 
-  // Summera faktiskt resultat hittills + förväntat resultat resten av dagen
-  var total = soFar + forecast;
-
-  function fmt(kr) { 
-    return (kr >= 0 ? '+' : '') + kr.toFixed(2) + ' kr'; 
+  // Om din HA-sensor är mer pålitlig för "Hittills", använd den istället:
+  if (window._haNetCostToday && window._haNetCostToday !== 0) {
+    totaltHittills = window._haNetCostToday;
   }
 
-  // Uppdatera UI-elementen
+  var totaltHelaDagen = totaltHittills + totaltFramåt;
+
+  function fmt(kr) { return (kr >= 0 ? '+' : '') + kr.toFixed(2) + ' kr'; }
+
+  // Uppdatera dashboard-korten
   const sfEl = document.getElementById('econ-sf');
   const fcEl = document.getElementById('econ-fc');
   const totEl = document.getElementById('econ-tot');
 
-  if (sfEl) sfEl.textContent = fmt(soFar);
-  if (fcEl) fcEl.textContent = fmt(forecast);
-  if (totEl) totEl.textContent = fmt(total);
+  if (sfEl) sfEl.textContent = fmt(totaltHittills);
+  if (fcEl) fcEl.textContent = fmt(totaltFramåt);
+  if (totEl) totEl.textContent = fmt(totaltHelaDagen);
 
-  // Uppdatera färgteman på korten (Grön för vinst, Röd för kostnad)
+  // Uppdatera färger på korten
   const sfCard = document.getElementById('econ-sf-card');
   const totCard = document.getElementById('econ-tot-card');
-  
-  if (sfCard) sfCard.className = 'econ-card ' + (soFar >= 0 ? 'econ-positive' : 'econ-negative');
-  if (totCard) totCard.className = 'econ-card ' + (total >= 0 ? 'econ-positive' : 'econ-negative');
+  if (sfCard) sfCard.className = 'econ-card ' + (totaltHittills >= 0 ? 'econ-positive' : 'econ-negative');
+  if (totCard) totCard.className = 'econ-card ' + (totaltHelaDagen >= 0 ? 'econ-positive' : 'econ-negative');
 }
 
 // Load EV data + charging plan (all Swedish)
