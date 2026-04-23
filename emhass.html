@@ -205,7 +205,7 @@ td.mono{font-family:'DM Mono',monospace}
       <span class="pf-live"><span class="pf-dot"></span>Live &ndash; uppdateras var 15s</span>
     </div>
     <!-- Single canvas handles both nodes and flow lines -->
-    <canvas id="pf-canvas" style="width:100%;display:block;border-radius:12px;cursor:default"></canvas>
+    <canvas id="pf-canvas" style="width:100%;display:block;border-radius:8px"></canvas>
   </div>
 
     <!-- Price stats -->
@@ -909,7 +909,7 @@ function computeChargingWindow(tableRows, chartData) {
   const depTime = (depEl && depEl.textContent !== '–') ? depEl.textContent : null;
 
   if (!socPct || !depTime) {
-    if(planTextEl) planTextEl.textContent = 'Bil ej ansluten';
+    planTextEl.textContent = 'Bil ej ansluten';
     return;
   }
 
@@ -923,7 +923,7 @@ function computeChargingWindow(tableRows, chartData) {
   }
 
   if (neededKwh < 0.5) {
-    if(planTextEl) planTextEl.textContent = 'Redan fulladdat';
+    planTextEl.textContent = 'Redan fulladdat';
     return;
   }
 
@@ -938,7 +938,7 @@ function computeChargingWindow(tableRows, chartData) {
                          .sort((a, b) => a.buyOre - b.buyOre);
 
   if (slots.length < neededSlots) {
-    if(planTextEl) planTextEl.textContent = 'Otillräckligt med tid';
+    planTextEl.textContent = 'Otillräckligt med tid';
     return;
   }
 
@@ -948,7 +948,7 @@ function computeChargingWindow(tableRows, chartData) {
 
   const fmtTime = ts => new Date(ts).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
 
-  if(planTextEl) planTextEl.textContent = fmtTime(fromTs);
+  planTextEl.textContent = fmtTime(fromTs);
   const toEl = document.getElementById('ev-charge-to');
   if (toEl) toEl.textContent = fmtTime(toTs);
 }
@@ -1237,52 +1237,47 @@ function drawSparkline(todayOre, currentOre, avgOre) {
   ctx.fillStyle = '#fbbf24'; ctx.fill();
 }
 
-// ── Modern 3D Power Flow renderer ─────────────────────────
-var _pfAnim   = null;
-var _pfOffset = 0;
-var _pfData   = {
-  pvW:0, loadW:0, battW:0, gridW:0, evW:0,
-  battCharging:false, battDischarging:false,
-  gridImporting:false, gridExporting:false,
-  socPct:0, dec:null
-};
+// ── Canvas-based Power Flow renderer ──────────────────────
+var _pfAnim = null;  // animation frame id
+var _pfData = { pvW:0, loadW:0, battW:0, gridW:0, evW:0,
+                battCharging:false, battDischarging:false,
+                gridImporting:false, gridExporting:false,
+                socPct:0, dec:null };
+var _pfOffset = 0;  // dash animation offset
 
 function drawFlowLines(pvW, loadW, battW, gridW, evW,
                        battCharging, battDischarging, gridImporting, gridExporting) {
-  _pfData.pvW           = pvW;
-  _pfData.loadW         = loadW;
-  _pfData.battW         = battW;
-  _pfData.gridW         = gridW;
-  _pfData.evW           = evW;
-  _pfData.battCharging  = battCharging;
-  _pfData.battDischarging = battDischarging;
-  _pfData.gridImporting = gridImporting;
-  _pfData.gridExporting = gridExporting;
+  // Just update the data — animation loop handles rendering
+  _pfData = { pvW:pvW, loadW:loadW, battW:battW, gridW:gridW, evW:evW,
+              battCharging:battCharging, battDischarging:battDischarging,
+              gridImporting:gridImporting, gridExporting:gridExporting };
 }
 
 function startPFCanvas() {
   var canvas = document.getElementById('pf-canvas');
   if (!canvas) return;
   if (_pfAnim) cancelAnimationFrame(_pfAnim);
-  var last = 0;
+
+  var lastT = 0;
   function frame(t) {
     _pfAnim = requestAnimationFrame(frame);
-    if (t - last < 33) return; // ~30fps
-    last = t;
-    _pfOffset = (_pfOffset + 0.8) % 28;
+    if (t - lastT < 50) return; // ~20fps
+    lastT = t;
+    _pfOffset = (_pfOffset + 1) % 19;
     renderPF(canvas, _pfData, _pfOffset);
   }
   _pfAnim = requestAnimationFrame(frame);
 }
 
-function renderPF(canvas, d, offset) {
+function renderPF(canvas, d, dashOffset) {
   var dpr = window.devicePixelRatio || 1;
-  var W   = (canvas.parentElement ? canvas.parentElement.offsetWidth - 40 : 600);
-  var H   = Math.max(Math.round(W * 0.42), 220);
+  var W   = canvas.parentElement ? canvas.parentElement.offsetWidth - 40 : 600;
+  var H   = Math.round(W * 0.38);  // 38% aspect ratio
+  H = Math.max(H, 200);
 
-  if (canvas.width !== Math.round(W * dpr)) {
-    canvas.width  = Math.round(W * dpr);
-    canvas.height = Math.round(H * dpr);
+  if (canvas.width !== W * dpr) {
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
     canvas.style.width  = W + 'px';
     canvas.style.height = H + 'px';
   }
@@ -1291,194 +1286,121 @@ function renderPF(canvas, d, offset) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
 
-  // Positions
-  var R   = Math.min(52, W * 0.1);
-  var cx  = W / 2;
-  var c1  = W * 0.16, c3 = W * 0.84;
-  var r1  = H * 0.20, r2 = H * 0.62, r3 = H * 0.93;
+  // Node layout: fixed grid positions
+  var nodeR = Math.min(48, W * 0.09);
+  var cx = W / 2;
+  var col1 = W * 0.18;
+  var col3 = W * 0.82;
+  var row1 = H * 0.22;
+  var row2 = H * 0.65;
+  var row3 = H * 0.92;
 
-  var soc = _pfData.socPct || 0;
-
-  // Node definitions
-  var N = {
-    sol:   { x:cx, y:r1, icon:'☀️',  lbl:'Sol',   val:Math.round(d.pvW)+' W',
-             grad:['#f59e0b','#78350f'], glow:'#f59e0b' },
-    batt:  { x:c1, y:r2, icon:'🔋',  lbl:'Batteri '+soc.toFixed(0)+'%',
-             val:(d.battW>5?'▲ ':d.battW<-5?'▼ ':'')+Math.abs(Math.round(d.battW))+' W',
-             grad: soc > 60 ? ['#3b82f6','#1e3a5f'] : soc > 25 ? ['#f59e0b','#78350f'] : ['#ef4444','#7f1d1d'],
-             glow: soc > 60 ? '#3b82f6' : soc > 25 ? '#f59e0b' : '#ef4444' },
-    house: { x:cx, y:r2, icon:'🏠',  lbl:'Hus',   val:Math.round(d.loadW)+' W',
-             grad:['#ec4899','#7c1d48'], glow:'#ec4899' },
-    grid:  { x:c3, y:r2, icon:'⚡',
-             lbl: d.gridImporting ? 'Nät (köp)' : d.gridExporting ? 'Nät (sälj)' : 'Nät',
-             val: Math.abs(Math.round(d.gridW))+' W',
-             grad:['#6b7280','#1f2937'], glow:'#6b7280' },
+  // Nodes: {x, y, icon, label, val, color}
+  var nodes = {
+    sol:   { x: cx,   y: row1, icon:'☀️',  lbl:'Sol',    val: Math.round(d.pvW)   + ' W', color:'#d97706' },
+    batt:  { x: col1, y: row2, icon:'🔋',  lbl: 'Batteri ' + (_pfData.socPct||0).toFixed(0) + '%',
+             val: (d.battW>5?'▲ ':d.battW<-5?'▼ ':'') + Math.abs(Math.round(d.battW)) + ' W',
+             color: (_pfData.socPct||0) > 60 ? '#2563eb' : (_pfData.socPct||0) > 30 ? '#d97706' : '#dc2626' },
+    house: { x: cx,   y: row2, icon:'🏠',  lbl:'Hus',    val: Math.round(d.loadW) + ' W', color:'#db2777' },
+    grid:  { x: col3, y: row2, icon:'🔌',  lbl: d.gridImporting ? 'Nät (köp)' : d.gridExporting ? 'Nät (sälj)' : 'Nät',
+             val: Math.abs(Math.round(d.gridW)) + ' W', color:'#4b5563' },
   };
 
-  // ── Flow lines ─────────────────────────────────────────────
-  function flowLine(from, to, color, watts, glowColor) {
-    if (Math.abs(watts) < 3) return;
-    var dx = to.x-from.x, dy = to.y-from.y;
-    var dist = Math.sqrt(dx*dx+dy*dy)||1;
+  // Draw flow lines first (under nodes)
+  ctx.save();
+  ctx.setLineDash([12, 7]);
+  ctx.lineDashOffset = -dashOffset;
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+
+  function flowLine(from, to, color, watts) {
+    if (!from || !to || Math.abs(watts) < 5) return;
+    var dx = to.x - from.x, dy = to.y - from.y;
+    var dist = Math.sqrt(dx*dx + dy*dy) || 1;
     var nx = dx/dist, ny = dy/dist;
-    var x1 = from.x + nx*R, y1 = from.y + ny*R;
-    var x2 = to.x   - nx*R, y2 = to.y   - ny*R;
-    var w  = Math.min(6, Math.max(2.5, Math.abs(watts)/600));
-    var spd = Math.max(0.4, 1.6 - Math.abs(watts)/3000);
-
-    // Glow effect
-    ctx.save();
-    ctx.shadowColor  = glowColor || color;
-    ctx.shadowBlur   = 12;
-    ctx.strokeStyle  = color;
-    ctx.lineWidth    = w + 2;
-    ctx.globalAlpha  = 0.25;
-    ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    ctx.restore();
-
-    // Animated dashes
-    ctx.save();
+    var x1 = from.x + nx * nodeR;
+    var y1 = from.y + ny * nodeR;
+    var x2 = to.x   - nx * nodeR;
+    var y2 = to.y   - ny * nodeR;
     ctx.strokeStyle = color;
-    ctx.lineWidth   = w;
-    ctx.lineCap     = 'round';
-    ctx.globalAlpha = 0.95;
-    ctx.setLineDash([14, 9]);
-    ctx.lineDashOffset = -(offset * spd);
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    ctx.restore();
-
-    // Moving particles along line
-    ctx.save();
-    ctx.fillStyle   = glowColor || color;
-    ctx.shadowColor = glowColor || color;
-    ctx.shadowBlur  = 8;
-    ctx.globalAlpha = 0.9;
-    var nParticles = Math.max(2, Math.min(5, Math.round(Math.abs(watts)/800)));
-    for (var p = 0; p < nParticles; p++) {
-      var prog = ((offset * spd * 0.04 + p / nParticles) % 1);
-      var px = x1 + (x2-x1)*prog;
-      var py = y1 + (y2-y1)*prog;
-      ctx.beginPath();
-      ctx.arc(px, py, w*0.9, 0, Math.PI*2);
-      ctx.fill();
-    }
-    ctx.restore();
-
+    ctx.lineWidth = Math.min(6, Math.max(2, Math.abs(watts) / 500));
+    ctx.setLineDash([12, 7]);
+    ctx.lineDashOffset = -dashOffset;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
     // Arrow tip
-    ctx.save();
+    ctx.setLineDash([]);
     ctx.fillStyle = color;
-    ctx.globalAlpha = 0.85;
+    ctx.save();
     ctx.translate(x2, y2);
     ctx.rotate(Math.atan2(dy, dx));
     ctx.beginPath();
-    ctx.moveTo(0,0); ctx.lineTo(-11,-5); ctx.lineTo(-11,5);
-    ctx.closePath(); ctx.fill();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-10, -5);
+    ctx.lineTo(-10,  5);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
   }
 
-  // Draw lines
-  if (d.pvW > 3)                          flowLine(N.sol,   N.house, '#fbbf24', d.pvW,               '#fbbf24');
-  if (d.battCharging   && d.pvW > 20)     flowLine(N.sol,   N.batt,  '#22c55e', Math.abs(d.battW),   '#22c55e');
-  if (d.battCharging   && d.pvW <= 20)    flowLine(N.grid,  N.batt,  '#a78bfa', Math.abs(d.battW),   '#a78bfa');
-  if (d.battDischarging)                  flowLine(N.batt,  N.house, '#60a5fa', Math.abs(d.battW),   '#60a5fa');
-  if (d.gridImporting)                    flowLine(N.grid,  N.house, '#f87171', Math.abs(d.gridW),   '#f87171');
-  if (d.gridExporting)                    flowLine(N.house, N.grid,  '#2dd4bf', Math.abs(d.gridW),   '#2dd4bf');
-  if (d.evW > 100)                        flowLine(N.batt,  {x:c1,y:r3,R:R}, '#4ade80', d.evW,      '#4ade80');
+  if (d.pvW > 5)                         flowLine(nodes.sol,   nodes.house, '#fbbf24', d.pvW);
+  if (d.battCharging && d.pvW > 20)      flowLine(nodes.sol,   nodes.batt,  '#22c55e', Math.abs(d.battW));
+  if (d.battCharging && d.pvW <= 20)     flowLine(nodes.grid,  nodes.batt,  '#a78bfa', Math.abs(d.battW));
+  if (d.battDischarging)                 flowLine(nodes.batt,  nodes.house, '#60a5fa', Math.abs(d.battW));
+  if (d.gridImporting)                   flowLine(nodes.grid,  nodes.house, '#f87171', Math.abs(d.gridW));
+  if (d.gridExporting)                   flowLine(nodes.house, nodes.grid,  '#2dd4bf', Math.abs(d.gridW));
+  ctx.restore();
 
-  // ── 3D Nodes ───────────────────────────────────────────────
-  function drawNode3D(n) {
-    var x = n.x, y = n.y;
-    ctx.save();
-
-    // Drop shadow
-    ctx.shadowColor = n.glow;
-    ctx.shadowBlur  = 22;
-    ctx.shadowOffsetY = 4;
-
-    // Outer ring (glow border)
-    ctx.beginPath(); ctx.arc(x, y, R+3, 0, Math.PI*2);
-    ctx.strokeStyle = n.glow + '66';
-    ctx.lineWidth   = 2;
+  // Draw nodes on top
+  function drawNode(n) {
+    // Circle background
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, nodeR, 0, Math.PI * 2);
+    ctx.fillStyle = n.color + '33';
+    ctx.fill();
+    ctx.strokeStyle = n.color + '99';
+    ctx.lineWidth = 2;
     ctx.setLineDash([]);
     ctx.stroke();
 
-    // 3D gradient fill
-    var g3d = ctx.createRadialGradient(x-R*0.3, y-R*0.35, R*0.05, x, y, R);
-    g3d.addColorStop(0,   n.grad[0] + 'ff');
-    g3d.addColorStop(0.5, n.grad[0] + 'cc');
-    g3d.addColorStop(1,   n.grad[1] + 'ff');
-    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI*2);
-    ctx.fillStyle = g3d;
-    ctx.fill();
-
-    // Specular highlight (top-left shine)
-    var shine = ctx.createRadialGradient(x-R*0.28, y-R*0.30, 0, x-R*0.1, y-R*0.1, R*0.65);
-    shine.addColorStop(0, 'rgba(255,255,255,0.35)');
-    shine.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI*2);
-    ctx.fillStyle = shine;
-    ctx.fill();
-
-    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-
     // Watts value
-    ctx.fillStyle    = '#ffffff';
-    ctx.font         = 'bold ' + Math.round(R*0.30) + 'px "DM Mono",monospace';
-    ctx.textAlign    = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold ' + Math.round(nodeR * 0.32) + 'px DM Mono, monospace';
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(n.val, x, y - R*0.22);
+    ctx.fillText(n.val, n.x, n.y - nodeR * 0.4);
 
     // Emoji icon
-    ctx.font = Math.round(R*0.52)+'px serif';
-    ctx.fillText(n.icon, x, y + R*0.18);
+    ctx.font = Math.round(nodeR * 0.55) + 'px serif';
+    ctx.fillText(n.icon, n.x, n.y + nodeR * 0.2);
 
-    ctx.restore();
-
-    // Label below node
-    ctx.save();
-    ctx.fillStyle    = 'rgba(255,255,255,0.75)';
-    ctx.font         = Math.round(R*0.27)+'px "DM Sans",sans-serif';
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(n.lbl, x, y + R + 6);
-    ctx.restore();
+    // Label below
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = Math.round(nodeR * 0.27) + 'px DM Sans, sans-serif';
+    ctx.fillText(n.lbl, n.x, n.y + nodeR + 14);
   }
 
-  // Draw all nodes
-  Object.values(N).forEach(drawNode3D);
+  Object.values(nodes).forEach(drawNode);
 
-  // EV node if charging
-  if (d.evW > 100) {
-    drawNode3D({ x:c1, y:r3, icon:'🚗', lbl:'Bil',
-      val: Math.round(d.evW)+' W',
-      grad:['#16a34a','#14532d'], glow:'#22c55e' });
-  }
-
-  // Decision pill
-  if (d.dec) {
-    ctx.save();
-    ctx.font      = '600 13px "DM Sans",sans-serif';
-    ctx.textAlign = 'center';
-    var lbl = '● ' + d.dec.label;
-    var tw  = ctx.measureText(lbl).width + 30;
-    var lx  = cx - tw/2, ly = r3 - 16;
-    // Background
-    ctx.fillStyle   = d.dec.color + '33';
-    ctx.strokeStyle = d.dec.color + '99';
-    ctx.lineWidth   = 1.5;
-    ctx.shadowColor = d.dec.color;
-    ctx.shadowBlur  = 8;
+  // Decision label at bottom center
+  if (_pfData.dec) {
+    ctx.fillStyle = _pfData.dec.color + '33';
+    ctx.strokeStyle = _pfData.dec.color + '88';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    var lbl = '● ' + _pfData.dec.label;
+    ctx.font = '600 13px DM Sans, sans-serif';
+    var tw = ctx.measureText(lbl).width + 28;
+    var lx = cx - tw/2, ly = row3 - 14;
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(lx, ly, tw, 26, 13);
-    else { ctx.rect(lx, ly, tw, 26); }
+    ctx.roundRect(lx, ly, tw, 26, 13);
     ctx.fill(); ctx.stroke();
-    // Text
-    ctx.shadowBlur       = 0;
-    ctx.fillStyle        = d.dec.color;
-    ctx.textBaseline     = 'middle';
+    ctx.fillStyle = _pfData.dec.color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillText(lbl, cx, ly + 13);
-    ctx.restore();
   }
 }
 
