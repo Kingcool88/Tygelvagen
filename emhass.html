@@ -426,18 +426,26 @@ function renderChart(d,spanH){
 
 function updateEconUI(tableRows, avgOre) {
   var now = Date.now();
+  
+  // Skapa en spärr så vi bara räknar kvartar som tillhör IDAG
+  var endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  var endMs = endOfToday.getTime();
+
   var soFar = Number(window._haNetCostToday);
   if (isNaN(soFar)) soFar = 0;
 
   var forecast = 0;
   if (tableRows && tableRows.length > 0) {
     tableRows.forEach(function(r) {
-      if (r.t > now && !r.isHistory) {
+      // Addera bara om tiden är efter 'nu' men innan 'midnatt'
+      if (r.t > now && r.t <= endMs && !r.isHistory) {
         var rowEcon = Number(r.econKr);
         if (!isNaN(rowEcon)) forecast += rowEcon;
       }
     });
   }
+  
   var total = soFar + forecast;
   function fmt(kr) { return (kr >= 0 ? '+' : '') + kr.toFixed(2) + ' kr'; }
 
@@ -892,21 +900,51 @@ function renderPF(canvas, d, dashOffset) {
 
   function flow(f, t, c, w) {
     if (!f || !t || Math.abs(w) < 5) return;
+    var dx = t.x - f.x, dy = t.y - f.y;
+    var dist = Math.sqrt(dx*dx + dy*dy);
+    var nx = dx/dist, ny = dy/dist;
+    
+    // Starta och stanna precis utanför bubblorna så linjen inte ritas under dem
+    var x1 = f.x + nx*(nodeR+10), y1 = f.y + ny*(nodeR+10);
+    var x2 = t.x - nx*(nodeR+15), y2 = t.y - ny*(nodeR+15);
+
+    // 1. Spåret i bakgrunden (Svagt rör)
     ctx.beginPath();
-    ctx.moveTo(f.x, f.y); ctx.lineTo(t.x, t.y);
-    ctx.strokeStyle = c; ctx.lineWidth = Math.min(6, Math.max(2, Math.abs(w)/500));
-    ctx.setLineDash([12, 18]); ctx.lineDashOffset = -dashOffset * 2;
-    ctx.shadowColor = c; ctx.shadowBlur = 10;
+    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    ctx.strokeStyle = c + '22'; 
+    ctx.lineWidth = 4;
     ctx.stroke();
-    ctx.shadowBlur = 0; ctx.setLineDash([]);
+
+    // 2. Den rörliga energin (Tjockare, glödande neon)
+    ctx.beginPath();
+    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    ctx.strokeStyle = c; 
+    ctx.lineWidth = Math.min(8, Math.max(3, Math.abs(w)/400)); // Tjockare linje baserat på effekt
+    ctx.setLineDash([15, 25]); 
+    ctx.lineDashOffset = -dashOffset * 3; // Snabbare animation
+    ctx.shadowColor = c; 
+    ctx.shadowBlur = 15; // Kraftigare glöd-effekt
+    ctx.stroke();
+    ctx.shadowBlur = 0; 
+    ctx.setLineDash([]);
+
+    // 3. Pilhuvudet
+    ctx.fillStyle = c;
+    ctx.save(); 
+    ctx.translate(x2, y2); 
+    ctx.rotate(Math.atan2(dy, dx));
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-12,-6); ctx.lineTo(-12,6); ctx.fill();
+    ctx.restore();
   }
 
+  // Rita ut flödena
   if (d.pvW > 5) flow(nodes.sol, nodes.house, '#fbbf24', d.pvW);
   if (d.battCharging) flow(nodes.sol, nodes.batt, '#22c55e', d.battW);
   if (d.battDischarging) flow(nodes.batt, nodes.house, '#3b82f6', d.battW);
   if (d.gridImporting) flow(nodes.grid, nodes.house, '#ef4444', d.gridW);
   if (d.gridExporting) flow(nodes.house, nodes.grid, '#14b8a6', d.gridW);
 
+  // Rita ut 3D-noderna
   Object.values(nodes).forEach(n => {
     var g = ctx.createRadialGradient(n.x-10, n.y-10, 5, n.x, n.y, nodeR);
     g.addColorStop(0, n.color + 'bb'); g.addColorStop(1, '#181c26');
@@ -915,7 +953,7 @@ function renderPF(canvas, d, dashOffset) {
     ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
     ctx.fillText(n.val, n.x, n.y - 10);
     ctx.font = '24px serif'; ctx.fillText(n.icon, n.x, n.y + 15);
-    ctx.fillStyle = '#9ca3af'; ctx.font = '12px sans-serif'; ctx.fillText(n.lbl, n.x, n.y + nodeR + 15);
+    ctx.fillStyle = '#9ca3af'; ctx.font = '12px sans-serif'; ctx.fillText(n.lbl, n.x, n.y + nodeR + 18);
   });
 }
 
@@ -971,21 +1009,27 @@ async function loadLiveData() {
       catch(e) { return {state:'unavailable', attributes:{}}; }
     }
 
-    const [pvS, loadS, battS, socS, gridAS, impS, expS, pvKwhS, haNetCost, buyS, sellS, emhBatS, nordS, evS] = await Promise.all([
+    // Vi hämtar tillbaka dags-energierna (kWh) som saknades
+    const [
+      pvS, loadS, battS, socS, gridAS, 
+      pvKwhS, impKwhS, expKwhS, bChgS, bDisS,
+      haNetCost, buyS, sellS, emhBatS, nordS
+    ] = await Promise.all([
       safe('/api/states/sensor.sigen_plant_pv_power'),
       safe('/api/states/sensor.sigen_plant_consumed_power'),
       safe('/api/states/sensor.sigen_plant_battery_power'),
       safe('/api/states/sensor.sigen_plant_battery_state_of_charge'),
       safe('/api/states/sensor.sigen_plant_grid_active_power'),
-      safe('/api/states/sensor.sigen_plant_grid_import_power'),
-      safe('/api/states/sensor.sigen_plant_grid_export_power'),
       safe('/api/states/sensor.sigen_plant_daily_third_party_inverter_energy'),
+      safe('/api/states/sensor.sigen_plant_daily_grid_import_energy'),
+      safe('/api/states/sensor.sigen_plant_daily_grid_export_energy'),
+      safe('/api/states/sensor.sigen_plant_daily_battery_charge_energy'),
+      safe('/api/states/sensor.sigen_plant_daily_battery_discharge_energy'),
       safe('/api/states/sensor.emhass_faktisk_daglig_nettokostnad'),
       safe('/api/states/sensor.mpc_general_price'),
       safe('/api/states/sensor.mpc_feed_in_price'),
       safe('/api/states/sensor.mpc_batt_power'),
-      NORDPOOL ? safe('/api/states/'+NORDPOOL) : Promise.resolve(null),
-      safe('/api/states/sensor.tygelvagen_40_power')
+      NORDPOOL ? safe('/api/states/'+NORDPOOL) : Promise.resolve(null)
     ]);
 
     function num(s) {
@@ -993,6 +1037,8 @@ async function loadLiveData() {
       if (isNaN(v)) return 0;
       return (s.attributes?.unit_of_measurement === 'kW') ? v * 1000 : v;
     }
+    // Hjälpfunktion för rena kWh-siffror
+    function numKwh(s) { return parseFloat(s?.state) || 0; }
 
     var pvW = num(pvS), loadW = num(loadS), battW = num(battS), gridW = num(gridAS);
     var socPct = parseFloat(socS?.state) || 0;
@@ -1013,26 +1059,36 @@ async function loadLiveData() {
     _pfData.dec = dec;
     drawFlowLines(pvW, loadW, battW, gridW, 0, (battW > 5), (battW < -5), (gridW > 10), (gridW < -10), socPct, dec);
 
+    // --- UPPDATERA ALLA KORT I UI ---
     setText('tc-price', Math.round(buyKr * 100));
-    setText('tc-sol-kwh', (num(pvKwhS)/1000).toFixed(1));
+    setText('tc-sol-kwh', numKwh(pvKwhS).toFixed(1));
     setText('tc-pv-w', Math.round(pvW));
     setText('tc-soc', socPct.toFixed(1) + ' %');
-  } catch(e) { console.error("Live-fel:", e); }
-}
+    
+    setText('tc-imp', numKwh(impKwhS).toFixed(1));
+    setText('tc-exp', numKwh(expKwhS).toFixed(1));
+    setText('tc-bchg', numKwh(bChgS).toFixed(1));
+    setText('tc-bdis', numKwh(bDisS).toFixed(1));
 
-function startLive() {
-  if (_liveT) clearInterval(_liveT);
-  startPFCanvas();
-  var rel = document.getElementById('tc-price-rel');
-  if (rel) { rel.textContent = 'Ansluter...'; rel.style.color = '#94a3b8'; }
-  haFetch('/api/states/sensor.mpc_general_price').then(function(r){
-    if (rel) { rel.textContent = 'Test OK: ' + Math.round(parseFloat(r.state)*100) + ' öre'; rel.style.color = '#22c55e'; }
-    loadLiveData();
-  }).catch(function(e){
-    if (rel) { rel.textContent = 'Anslutningsfel: ' + e.message; rel.style.color = '#f87171'; }
-    loadLiveData();
-  });
-  _liveT = setInterval(loadLiveData, 15000);
+    // Återställ Beslut-korten
+    var badge = document.getElementById('tc-badge');
+    if (badge) {
+      badge.textContent = dec.label;
+      badge.style.cssText = 'display:inline-block;padding:5px 14px;border-radius:20px;font-size:.88rem;font-weight:700;'
+        + 'background:' + dec.color + '33;color:' + dec.color + ';border:2px solid ' + dec.color + '88;margin-bottom:8px';
+    }
+    var mainW = Math.abs(battW) > 50 ? Math.abs(battW) : Math.abs(gridW) > 50 ? Math.abs(gridW) : pvW;
+    var decW = document.getElementById('tc-dec-w');
+    if (decW) { decW.textContent = Math.round(mainW); decW.style.color = dec.color; }
+
+    var descTxt =
+      battW > 50  ? 'Laddar batteri ' + Math.round(battW) + ' W' :
+      battW < -50 ? 'Urladdar batteri ' + Math.abs(Math.round(battW)) + ' W' :
+      gridW < -50 ? 'Säljer ' + Math.abs(Math.round(gridW)) + ' W till nät' :
+      gridW > 50  ? 'Köper ' + Math.round(gridW) + ' W från nät' : 'Självförsörjande';
+    setText('tc-dec-sub', descTxt);
+
+  } catch(e) { console.error("Live-fel:", e); }
 }
 
 async function startCharging(){
