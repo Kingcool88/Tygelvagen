@@ -438,7 +438,7 @@ function updateEconUI(tableRows, avgOre) {
   var forecast = 0;
   if (tableRows && tableRows.length > 0) {
     tableRows.forEach(function(r) {
-      // Addera bara om tiden är efter 'nu' men innan 'midnatt'
+      // Addera bara om tiden är i framtiden OCH innan midnatt
       if (r.t > now && r.t <= endMs && !r.isHistory) {
         var rowEcon = Number(r.econKr);
         if (!isNaN(rowEcon)) forecast += rowEcon;
@@ -449,15 +449,15 @@ function updateEconUI(tableRows, avgOre) {
   var total = soFar + forecast;
   function fmt(kr) { return (kr >= 0 ? '+' : '') + kr.toFixed(2) + ' kr'; }
 
-  const sfEl = document.getElementById('econ-sf');
-  const fcEl = document.getElementById('econ-fc');
-  const totEl = document.getElementById('econ-tot');
+  var sfEl = document.getElementById('econ-sf');
+  var fcEl = document.getElementById('econ-fc');
+  var totEl = document.getElementById('econ-tot');
   if (sfEl) sfEl.textContent = fmt(soFar);
   if (fcEl) fcEl.textContent = fmt(forecast);
   if (totEl) totEl.textContent = fmt(total);
 
-  const sfCard = document.getElementById('econ-sf-card');
-  const totCard = document.getElementById('econ-tot-card');
+  var sfCard = document.getElementById('econ-sf-card');
+  var totCard = document.getElementById('econ-tot-card');
   if (sfCard) sfCard.className = 'econ-card ' + (soFar >= 0 ? 'econ-positive' : 'econ-negative');
   if (totCard) totCard.className = 'econ-card ' + (total >= 0 ? 'econ-positive' : 'econ-negative');
 }
@@ -901,34 +901,30 @@ function renderPF(canvas, d, dashOffset) {
   function flow(f, t, c, w) {
     if (!f || !t || Math.abs(w) < 5) return;
     var dx = t.x - f.x, dy = t.y - f.y;
-    var dist = Math.sqrt(dx*dx + dy*dy);
+    var dist = Math.sqrt(dx*dx + dy*dy) || 1;
     var nx = dx/dist, ny = dy/dist;
     
-    // Starta och stanna precis utanför bubblorna så linjen inte ritas under dem
     var x1 = f.x + nx*(nodeR+10), y1 = f.y + ny*(nodeR+10);
     var x2 = t.x - nx*(nodeR+15), y2 = t.y - ny*(nodeR+15);
 
-    // 1. Spåret i bakgrunden (Svagt rör)
     ctx.beginPath();
     ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
     ctx.strokeStyle = c + '22'; 
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // 2. Den rörliga energin (Tjockare, glödande neon)
     ctx.beginPath();
     ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
     ctx.strokeStyle = c; 
-    ctx.lineWidth = Math.min(8, Math.max(3, Math.abs(w)/400)); // Tjockare linje baserat på effekt
+    ctx.lineWidth = Math.min(8, Math.max(3, Math.abs(w)/400));
     ctx.setLineDash([15, 25]); 
-    ctx.lineDashOffset = -dashOffset * 3; // Snabbare animation
+    ctx.lineDashOffset = -dashOffset * 3;
     ctx.shadowColor = c; 
-    ctx.shadowBlur = 15; // Kraftigare glöd-effekt
+    ctx.shadowBlur = 15;
     ctx.stroke();
     ctx.shadowBlur = 0; 
     ctx.setLineDash([]);
 
-    // 3. Pilhuvudet
     ctx.fillStyle = c;
     ctx.save(); 
     ctx.translate(x2, y2); 
@@ -937,15 +933,15 @@ function renderPF(canvas, d, dashOffset) {
     ctx.restore();
   }
 
-  // Rita ut flödena
   if (d.pvW > 5) flow(nodes.sol, nodes.house, '#fbbf24', d.pvW);
   if (d.battCharging) flow(nodes.sol, nodes.batt, '#22c55e', d.battW);
   if (d.battDischarging) flow(nodes.batt, nodes.house, '#3b82f6', d.battW);
   if (d.gridImporting) flow(nodes.grid, nodes.house, '#ef4444', d.gridW);
   if (d.gridExporting) flow(nodes.house, nodes.grid, '#14b8a6', d.gridW);
 
-  // Rita ut 3D-noderna
-  Object.values(nodes).forEach(n => {
+  // Gammalt, säkert loop-format som fungerar överallt
+  Object.keys(nodes).forEach(function(k) {
+    var n = nodes[k];
     var g = ctx.createRadialGradient(n.x-10, n.y-10, 5, n.x, n.y, nodeR);
     g.addColorStop(0, n.color + 'bb'); g.addColorStop(1, '#181c26');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(n.x, n.y, nodeR, 0, Math.PI*2); ctx.fill();
@@ -1009,7 +1005,6 @@ async function loadLiveData() {
       catch(e) { return {state:'unavailable', attributes:{}}; }
     }
 
-    // Vi hämtar tillbaka dags-energierna (kWh) som saknades
     const [
       pvS, loadS, battS, socS, gridAS, 
       pvKwhS, impKwhS, expKwhS, bChgS, bDisS,
@@ -1032,34 +1027,33 @@ async function loadLiveData() {
       NORDPOOL ? safe('/api/states/'+NORDPOOL) : Promise.resolve(null)
     ]);
 
+    // FIX: Säkert och kompatibelt sätt att läsa värden
     function num(s) {
-      var v = parseFloat(s?.state);
+      var v = parseFloat(s && s.state);
       if (isNaN(v)) return 0;
-      return (s.attributes?.unit_of_measurement === 'kW') ? v * 1000 : v;
+      return (s && s.attributes && s.attributes.unit_of_measurement === 'kW') ? v * 1000 : v;
     }
-    // Hjälpfunktion för rena kWh-siffror
-    function numKwh(s) { return parseFloat(s?.state) || 0; }
+    function numKwh(s) { return parseFloat(s && s.state) || 0; }
 
     var pvW = num(pvS), loadW = num(loadS), battW = num(battS), gridW = num(gridAS);
-    var socPct = parseFloat(socS?.state) || 0;
-    var buyKr = parseFloat(buyS?.state) || 0, sellKr = parseFloat(sellS?.state) || 0;
-    var emhBat = parseFloat(emhBatS?.state) || 0;
+    var socPct = parseFloat(socS && socS.state) || 0;
+    var buyKr = parseFloat(buyS && buyS.state) || 0, sellKr = parseFloat(sellS && sellS.state) || 0;
+    var emhBat = parseFloat(emhBatS && emhBatS.state) || 0;
 
-    var haNetVal = parseFloat(haNetCost?.state);
+    var haNetVal = parseFloat(haNetCost && haNetCost.state);
     window._haNetCostToday = isNaN(haNetVal) ? 0 : haNetVal;
 
     var emhBatForClassify = emhBat !== 0 ? emhBat : -battW;
     var dec = classify(emhBatForClassify, pvW, gridW, buyKr, sellKr, buyKr * 0.9);
 
-    if (allData && allData.tableRows) {
-      updateEconUI(allData.tableRows, (avgOreGlobal || 84));
+    if (typeof allData !== 'undefined' && allData && allData.tableRows) {
+      updateEconUI(allData.tableRows, (typeof avgOreGlobal !== 'undefined' ? avgOreGlobal : 84));
     }
 
     _pfData.socPct = socPct;
     _pfData.dec = dec;
     drawFlowLines(pvW, loadW, battW, gridW, 0, (battW > 5), (battW < -5), (gridW > 10), (gridW < -10), socPct, dec);
 
-    // --- UPPDATERA ALLA KORT I UI ---
     setText('tc-price', Math.round(buyKr * 100));
     setText('tc-sol-kwh', numKwh(pvKwhS).toFixed(1));
     setText('tc-pv-w', Math.round(pvW));
@@ -1070,7 +1064,6 @@ async function loadLiveData() {
     setText('tc-bchg', numKwh(bChgS).toFixed(1));
     setText('tc-bdis', numKwh(bDisS).toFixed(1));
 
-    // Återställ Beslut-korten
     var badge = document.getElementById('tc-badge');
     if (badge) {
       badge.textContent = dec.label;
