@@ -379,7 +379,8 @@ function renderChart(d,spanH){
       {name:'F\u00f6rbrukning',type:'area',data:d.loadLine,color:'#f87171'},
       {name:'Batteri SOC',type:'line',data:d.socLine,color:'#38bdf8'},
       {name:'N\u00e4teffekt',type:'line',data:d.gridLine,color:'#94a3b8'},
-      {name:'Elpris (\u00f6re)',type:'line',data:d.nordBars,color:'#fcd34d'},
+      // FIX: Här används nu d.buyLine för att visa faktiskt köppris i grafen
+      {name:'Elpris (\u00f6re)',type:'line',data:d.buyLine,color:'#fcd34d'},
       {name:'S\u00e4ljpris (\u00f6re)',type:'line',data:d.sellLine,color:'#86efac'},
     ],
     xaxis:{type:'datetime',min:xMin,max:xMax,
@@ -413,13 +414,19 @@ function renderChart(d,spanH){
   if(chart){chart.destroy();chart=null;}
   chart=new ApexCharts(document.getElementById('chart'),opts);
   chart.render();
-  
+  // Start Nu-line updater
   if(window._nuTimer) clearInterval(window._nuTimer);
   window._nuTimer=setInterval(function(){
     if(!chart) return;
     chart.updateOptions({
-      annotations:{xaxis:[{x:Date.now(),borderColor:'#ef4444',borderWidth:2,
-        label:{text:'NU',style:{color:'#fff',background:'#ef4444',fontFamily:"'DM Sans',sans-serif",fontSize:'11px'}}}]}
+      annotations:{
+        xaxis:[{
+          x:Date.now(),
+          borderColor:'#ef4444',
+          borderWidth:2,
+          label:{text:'NU',style:{color:'#fff',background:'#ef4444',fontFamily:"'DM Sans',sans-serif",fontSize:'11px'}}
+        }]
+      }
     },false,false);
   },30000);
 }
@@ -704,7 +711,10 @@ async function loadData(){
 
     var masterFc=[loadFc,battFc,pvFc].sort(function(a,b){return b.length-a.length;})[0] || [];
     var solarCharge=[],gridCharge=[],discharge=[],export_=[];
-    var pvLine=[],loadLine=[],socLine=[],gridLine=[],sellLine=[];
+    
+    // TILLÄGG 1: Vi lägger till buyLine här
+    var pvLine=[],loadLine=[],socLine=[],gridLine=[],sellLine=[],buyLine=[];
+    
     var tableRows=[];
     var buyVals=buyFc.map(function(p){return p.val;}).filter(function(v){return v>0;});
     var avgBuyKr=buyVals.length?buyVals.reduce(function(a,b){return a+b;},0)/buyVals.length:0.084;
@@ -726,6 +736,10 @@ async function loadData(){
       socLine.push([t,soc]);
       gridLine.push([t,grid]);
       sellLine.push([t,sell*100]);
+      
+      // TILLÄGG 2: Vi bygger vår array med det faktiska köppriset för grafen
+      buyLine.push([t, buy > 0 ? Math.round(buy * 100) : (nordPriceMap[t] || 0)]);
+      
       solarCharge.push([t,dec.key==='solar_charge'?Math.abs(batt):0]);
       gridCharge.push([t,dec.key==='grid_charge'?Math.abs(batt):0]);
       discharge.push([t,batt>50&&batt<10000?batt:0]);
@@ -767,9 +781,10 @@ async function loadData(){
       });
     }catch(e){}
 
+    // TILLÄGG 3: Vi skickar med buyLine till allData
     allData={solarCharge:solarCharge,gridCharge:gridCharge,discharge:discharge,
              export_:export_,pvLine:pvLine,loadLine:loadLine,socLine:socLine,
-             gridLine:gridLine,nordBars:nordBars,sellLine:sellLine, 
+             gridLine:gridLine,nordBars:nordBars,sellLine:sellLine, buyLine:buyLine,
              tableRows:tableRows};
 
     document.getElementById('chart-loading').style.display='none';
